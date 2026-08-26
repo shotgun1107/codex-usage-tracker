@@ -19,17 +19,21 @@
 
 ### Q-002. JSONL과 SQLite의 역할
 
-- 현재 관찰: 토큰·모델·Git 정보는 JSONL, spawn-edge는 SQLite에 존재한다.
-- 질문: 모든 실행 형태에서 두 소스가 같은 thread ID로 안정적으로 조인되는가?
-- 검증: 데스크톱·CLI·자식·백그라운드 작업을 생성하고 양쪽 ID와 누락 여부를 비교한다.
-- 완료 기준: 필수 소스, 조인 키, 누락 시 폴백을 정의한다.
+- 상태: 현재 로컬 버전에 대해 부분 해결
+- 결과: 631개 thread 모두 `SQLite threads.id = rollout UUID = session_meta.id`로 조인됐다.
+- 결과: `session_meta.session_id`는 고유 thread ID가 아니라 계보 root다.
+- 결과: JSONL은 상세 이벤트, SQLite는 인덱스·spawn-edge·최신 요약으로 역할이 나뉜다.
+- 남은 질문: 현재 표본에 없는 `cli`, `appServer`, 별도 백그라운드 실행에서도 같은 규칙이 유지되는가?
+- 완료 기준: 통제 실험에서 실행 종류별 조인과 누락 폴백을 확인한다.
 
 ### Q-003. 부모·자식 spawn-edge의 완전성
 
-- 질문: CLI·백그라운드·fork·재개된 자식도 `thread_spawn_edges`에 남는가?
-- 현재 관찰: 로컬 edge 273개는 부모·자식 모두 존재했다.
-- 검증: 실행 종류별 자식 작업을 만들고 edge 생성과 상태 변화를 확인한다.
-- 완료 기준: 정상 연결과 고아 처리 규칙을 정의한다.
+- 상태: 현재 로컬 subagent에 대해 부분 해결
+- 결과: `subagent.thread_spawn` 310개가 spawn-edge child 310개와 정확히 일치했다.
+- 결과: edge가 없는 `subagent.other` 175개도 `session_meta.session_id`로 존재하는 root에 연결됐다.
+- 결과: 현재 edge에는 누락된 부모·자식, 다중 부모, 순환 관계가 없었다.
+- 남은 질문: CLI·백그라운드·fork·재개된 자식의 직접 관계도 같은 방식으로 남는가?
+- 완료 기준: 통제 실험에서 실행 종류별 edge와 root 연결을 확인한다.
 
 ### Q-004. 첫 token_count 이벤트
 
@@ -41,7 +45,9 @@
 ### Q-005. Git 메타데이터 누락
 
 - 질문: repository URL이 없는 작업을 어떤 정보로 프로젝트에 연결할 수 있는가?
-- 현재 관찰: 579개 rollout 중 repository URL은 341개에 존재했다.
+- 현재 관찰: Spike 1 시점 631개 thread 중 repository URL이 있는 thread는 376개였다.
+- 현재 관찰: 자기·부모·root·단일 자식 저장소를 사용한 제안 규칙으로 386개를 자동 분류하고 245개는 미분류로 남았다.
+- 현재 관찰: 부모와 자식 저장소가 다른 spawn-edge가 64개 있어 자기 Git을 우선해야 한다.
 - 검증: Git 밖, remote 없는 repo, worktree, submodule, 프로젝트 밖 오케스트레이션을 비교한다.
 - 완료 기준: 자동 판별 우선순위와 미분류 조건을 정의한다.
 
@@ -82,8 +88,7 @@
 
 ## 다음 Spike 순서
 
-1. JSONL·SQLite source map과 조인 키 확인
+1. ~~JSONL·SQLite source map과 조인 키 확인~~ — 기존 로그 기준 완료
 2. fork·resume·compact 토큰 기준선 실험
-3. 오케스트레이션 부모·자식 귀속 실험
+3. CLI·백그라운드·오케스트레이션 귀속 통제 실험
 4. Git 메타데이터 누락과 미분류 폴백 실험
-

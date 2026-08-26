@@ -1,6 +1,6 @@
 # 데이터 스키마 초안
 
-상태: 검증 전 초안  
+상태: Spike 1 반영 초안
 스키마 버전: 미정
 
 이 문서는 원천 데이터와 GitHub 중앙 장부의 구조를 정의한다. 미확인 필드는 구현 전에 Spike로 검증한다.
@@ -21,7 +21,9 @@ Codex JSONL + Codex SQLite
 
 현재 필요한 레코드:
 
-- `session_meta`: session/thread 식별, source, cwd, Codex 버전, Git 정보
+- `session_meta.id`: SQLite와 조인하는 논리 thread ID
+- `session_meta.session_id`: 현재 session tree의 root thread ID
+- `session_meta`: source, cwd, Codex 버전, Git 정보
 - `turn_context`: turn, cwd, model, reasoning effort
 - `event_msg.token_count`: 누적 토큰 체크포인트
 - lifecycle·collaboration 레코드: fork·compact·부모 관계 보조 정보
@@ -46,6 +48,30 @@ project_roots
 ```
 
 SQLite 내부 스키마는 Codex 버전에 따라 변할 수 있으므로 직접 장부로 공유하지 않고 읽기 어댑터를 둔다.
+
+### 검증된 조인 규칙
+
+```text
+thread_id
+= SQLite threads.id
+= rollout 파일명의 UUID
+= JSONL session_meta.id
+
+root_session_id
+= JSONL session_meta.session_id
+
+parent_thread_id
+= SQLite thread_spawn_edges.parent_thread_id
+```
+
+Spike 1에서 631개 thread가 모두 위 규칙으로 연결됐다. `session_id`는 여러 자식이 공유하므로 thread의 고유 키로 사용하지 않는다.
+
+현재 소스 역할:
+
+```text
+JSONL  → 세부 토큰 체크포인트, turn별 모델·effort, Git 정보
+SQLite → thread 목록, rollout 위치, 직접 spawn-edge, 최신 tokens_used 요약
+```
 
 ## 중앙 장부 레코드
 
@@ -88,7 +114,7 @@ SQLite 내부 스키마는 Codex 버전에 따라 변할 수 있으므로 직접
     "total_tokens": 0
   },
   "source": {
-    "kind": "desktop|cli|background|child|unknown",
+    "kind": "vscode|cli|exec|appServer|subAgent|subAgentReview|subAgentCompact|subAgentThreadSpawn|subAgentOther|unknown",
     "rollout_fingerprint": "opaque-id",
     "record_position": "opaque-cursor"
   }
@@ -96,6 +122,8 @@ SQLite 내부 스키마는 Codex 버전에 따라 변할 수 있으므로 직접
 ```
 
 `null`은 정보가 없음을 의미한다. 필드가 없는 구버전과 숫자 0을 구분해야 한다.
+
+`cache_write_input_tokens`는 현재 로그 일부에서 누락되므로 필수 숫자가 아니라 nullable 버전별 필드로 취급한다.
 
 ### mapping_event
 
@@ -148,11 +176,13 @@ ledger/
 수동 지정
 → 현재 작업의 Git repository
 → 가장 가까운 분류된 부모 작업
-→ 로컬 매핑 캐시
+→ session tree root의 프로젝트
+→ Git 없는 오케스트레이터의 분류된 자식들이 정확히 하나의 repository만 가리킬 때 해당 repository
+→ 로컬 매핑
 → 미분류
 ```
 
-부모와 자식 Git 정보가 충돌할 때의 최종 정책은 아직 확정하지 않았다.
+Spike 1에서 부모와 자식의 Git 저장소가 다른 edge 64개가 확인됐다. 따라서 자기 Git 정보를 부모 상속보다 우선하는 방향은 근거가 생겼지만 최종 정책은 사용자 승인 전이다. 자식 저장소 역추론도 자식들이 여러 저장소를 가리키면 적용하지 않는다.
 
 ## 멱등과 정정
 
@@ -176,4 +206,3 @@ GitHub 장부에 저장하지 않는 값:
 - 검토되지 않은 remote·branch·프로젝트명
 
 remote·branch·경로는 원문, HMAC, 별도 ID 중 어떤 형태로 저장할지 결정한 뒤 스키마를 확정한다.
-
