@@ -1,6 +1,6 @@
 # Codex Usage Tracker v1 아키텍처
 
-상태: Design 단계 초안
+상태: 승인됨
 
 작성일: 2026-08-26
 

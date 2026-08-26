@@ -40,16 +40,15 @@
 | D-033 | v1에서는 이벤트를 삭제·롤업하지 않고 보존한다. | 개인용 규모에서는 단순성과 재계산 가능성이 우선이다. |
 | D-034 | remote 없는 저장소의 다기기 연결은 수동으로 같은 project ID에 연결한다. | 불안정한 commit·경로 기반 자동 추론을 피한다. |
 | D-035 | 한 turn에서 여러 저장소가 확인되면 `ambiguous_multi_repo`로 저장하고 수동 지정한다. | 토큰을 저장소별로 정확히 분할할 근거가 없다. |
+| D-036 | v1은 Python 3.12+ modular monolith CLI로 구현한다. | Windows 로컬 데이터 처리와 빠른 parser 반복 개발에 적합하다. |
+| D-037 | JSONL은 상세 token 원천, SQLite는 inventory·lineage 원천으로 사용하는 이중 adapter 구조를 사용한다. | 두 원천의 장점을 결합한다. |
+| D-038 | 로컬 SQLite outbox와 재생성 가능한 read model을 함께 사용한다. | crash-safe 수집과 빠른 조회를 함께 만족한다. |
+| D-039 | HMAC 키는 Windows Credential Manager에 저장하고 비가역 key ID로 기기 불일치를 탐지한다. | 비밀을 Git에 두지 않고 잘못된 키 혼용을 차단한다. |
+| D-040 | Git sync conflict·privacy failure·key mismatch는 자동 해결하지 않고 안전하게 중단한다. | 데이터 손상과 원문 유출을 방지한다. |
 
 ## 제안된 결정
 
-| ID | 제안 | 상태 |
-|---|---|---|
-| D-036 | v1은 Python 3.12+ modular monolith CLI로 구현한다. | ADR-001, 설계 승인 대기 |
-| D-037 | JSONL은 상세 token 원천, SQLite는 inventory·lineage 원천으로 사용하는 이중 adapter 구조를 사용한다. | ADR-002, 설계 승인 대기 |
-| D-038 | 로컬 SQLite outbox와 재생성 가능한 read model을 함께 사용한다. | ADR-003·006, 설계 승인 대기 |
-| D-039 | HMAC 키는 Windows Credential Manager에 저장하고 비가역 key ID로 기기 불일치를 탐지한다. | ADR-004, 설계 승인 대기 |
-| D-040 | Git sync conflict·privacy failure·key mismatch는 자동 해결하지 않고 안전하게 중단한다. | ADR-003·004, 설계 승인 대기 |
+현재 제안 상태로 남은 결정은 없다.
 
 ## 해결된 보류 항목
 

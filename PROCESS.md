@@ -75,8 +75,19 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["기반 정리"] --> B["Discover"] --> C["브리프 v0.4 승인"] --> D["Shape & Spike 완료"] --> E["Plan · PRD 완료"] --> F["Design · C4 · ADR 진행 중"]
-    F -. "다음 승인 지점" .-> G["Build"]
+    A["기반 정리"] --> B["Discover"] --> C["브리프 v0.4 승인"] --> D["Shape & Spike 완료"] --> E["Plan 완료"] --> F["Design 승인"] --> G["Build 진행 중"]
+    G -. "완성 단위 검증" .-> H["Validate"]
 ```
 
-현재 구현은 시작하지 않았다. PRD와 스키마 v1 명세를 바탕으로 C4 구조, 데이터 흐름, 보안 경계, ADR을 작성하는 Design 단계다. 다음은 설계 검토와 사용자 승인 후 Build 단계로 이동한다.
+설계와 ADR이 승인돼 Build 단계에 진입했다.
+
+## Build 진행
+
+- [x] Python src-layout과 기본 패키지
+- [x] HMAC project·thread·turn·event 식별자
+- [x] Git remote 정규화와 origin·unique·ambiguous 선택
+- [x] 첫 단위 테스트
+- [ ] JSONL token parser와 lifecycle delta
+- [ ] SQLite lineage adapter와 project attribution
+- [ ] outbox·ledger·read model
+- [ ] CLI collect·doctor·report·sync

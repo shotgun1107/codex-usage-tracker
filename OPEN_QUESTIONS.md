@@ -121,4 +121,5 @@
 - Git 누락·worktree·submodule·monorepo 폴백: 확인
 - 결정 확정: 완료
 - PRD·스키마 명세: 완료
-- 현재 단계: C4·ADR 설계 검토, Build 승인 대기
+- C4·ADR 설계: 승인 완료
+- 현재 단계: Build 진행 중

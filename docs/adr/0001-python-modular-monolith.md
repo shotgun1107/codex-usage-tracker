@@ -1,6 +1,6 @@
 # ADR-001: Python modular monolith CLI
 
-상태: 제안됨
+상태: 승인됨
 
 날짜: 2026-08-26
 

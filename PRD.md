@@ -1,6 +1,6 @@
 # Codex Usage Tracker v1 PRD
 
-상태: Plan 단계 초안
+상태: 승인됨
 
 대상 버전: v1
 
