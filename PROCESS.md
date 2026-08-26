@@ -75,8 +75,8 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["기반 정리"] --> B["Discover 진행 중"] --> C["브리프 v0.4 검토 중"]
-    C -. "검증 대기" .-> D["Shape & Spike"]
+    A["기반 정리"] --> B["Discover"] --> C["브리프 v0.4 승인"] --> D["Shape & Spike 진행 중"]
+    D -. "다음 승인 지점" .-> E["Plan · PRD"]
 ```
 
-현재 구현은 시작하지 않았다. 프로젝트 브리프, 조사 기록, 결정 기록, 미확인 사항, 스키마 초안을 분리해 문서화했다. 다음 단계로 넘어가기 전에 Codex 토큰 원천 데이터, fork·resume·compact 처리, 프로젝트와 오케스트레이션 세션의 연결 방식을 조사한다.
+현재 구현은 시작하지 않았다. Spike 1에서 JSONL·SQLite의 조인과 오케스트레이션 계보를 확인했고, Spike 2에서 신규·resume·fork·compact의 토큰 기준선을 확인했다. 다음은 사용자 승인 후 CLI·백그라운드·오케스트레이션 귀속 통제 실험을 진행한다.

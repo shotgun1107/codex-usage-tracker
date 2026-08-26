@@ -184,6 +184,75 @@ SQLite → thread 인덱스·spawn 계보·최신 토큰 요약
 
 SQLite `tokens_used`는 빠른 조회와 검증에는 유용하지만 입력·출력·캐시·추론 분해와 이벤트 이력이 없으므로 중앙 장부의 단독 원천으로 사용할 수 없다.
 
+## Spike 2: thread lifecycle 토큰 기준선 실험 (2026-08-26)
+
+Codex CLI `0.150.0-alpha.8`과 App Server를 사용해 `신규 turn → 프로세스 재시작 후 resume → fork → compact → compact 이후 turn` 순서로 통제 실험했다. 대화 내용은 기록하지 않고 토큰 체크포인트와 lifecycle 구조만 비교했다.
+
+### resume
+
+원본 thread의 누적 총 토큰은 다음과 같이 이어졌다.
+
+```text
+첫 turn 완료       14,376
+resume 직후        14,376  (변화 없음)
+resume turn 완료   28,782  (증가 14,406)
+```
+
+- resume는 같은 thread와 rollout 파일을 계속 사용했다.
+- 프로세스를 다시 시작해도 누적 카운터는 초기화되지 않았다.
+- SQLite `tokens_used`와 JSONL의 마지막 누적 총 토큰이 일치했다.
+
+따라서 resume를 새 카운터 구간으로 취급하면 안 된다.
+
+### fork
+
+부모가 28,782 토큰인 시점에 fork했다.
+
+```text
+fork 생성 직후 자식 체크포인트   28,782  (부모 이력 복사)
+fork의 새 turn 완료              46,153  (자식의 실제 증가 17,371)
+부모 체크포인트                  28,782  (fork turn의 영향 없음)
+```
+
+- 자식 rollout 첫 `session_meta`에는 자식 thread ID와 `forked_from_id`가 기록됐다.
+- 그 뒤에 부모 `session_meta`와 fork 시점까지의 부모 이력이 복사됐다.
+- 복사된 부모 레코드 21개의 payload가 원본과 모두 동일했다.
+- 복사된 두 작업은 부모와 같은 `turn_id`를 유지했고, fork 이후 작업만 새로운 `turn_id`를 가졌다.
+- fork는 `thread_spawn_edges`에 spawn 자식으로 기록되지 않았다.
+
+따라서 fork 파일의 첫 누적값을 새 사용량으로 더하면 부모 사용량을 중복 계산한다. 토큰 이벤트를 감싸는 `task_started.turn_id`와 turn 내부 이벤트 순번을 함께 사용하면 복사된 작업을 전역 중복 제거할 수 있다.
+
+현재 버전에서는 자식의 `session_id`가 부모 root가 아니라 자식 자신이었다. 공식 App Server 문서의 session tree 설명과 차이가 있으므로 fork 관계는 `session_id`로 추론하지 않고 명시적인 `forked_from_id`를 사용해야 한다.
+
+### compact
+
+부모를 compact했을 때 누적 총 토큰은 28,782로 유지됐고, compact 뒤 첫 일반 turn에서 44,513으로 증가했다.
+
+```text
+compact 전 누적             28,782
+compact 직후 누적           28,782  (일반 delta 0)
+compact 직후 reported last   4,891  (세부 항목은 모두 0)
+다음 일반 turn 누적         44,513  (증가 15,731)
+```
+
+- `compacted`, `context_compacted`, compact 전용 task가 기록됐다.
+- compact 직후 `total_token_usage`는 반복됐으므로 누적 체크포인트 차이는 0이다.
+- 동시에 `last_token_usage.total_tokens=4,891`이 기록됐지만 입력·출력·캐시·추론 세부값은 모두 0이었다.
+- compact 뒤에도 누적 카운터는 감소하거나 초기화되지 않았다.
+
+따라서 일반 프로젝트 토큰 delta는 누적 체크포인트 차이로 계산할 수 있다. 다만 4,891 토큰이 실제 compact 모델 사용량인지, 계정 한도에 반영되는지는 현재 로그만으로 확정할 수 없으므로 원본 값을 별도 보존하고 합산 정책은 보류한다.
+
+### lifecycle 결론
+
+```text
+신규 일반 thread  → 첫 누적값이 첫 사용량
+resume             → 기존 카운터를 그대로 계속 사용
+fork               → 부모 이력은 복사본이며 중복 제거, 새 turn만 증가량 인정
+compact            → 누적 차이는 0, 불투명한 reported last는 별도 보존
+```
+
+이 결과는 현재 CLI 버전의 통제 실험 결과다. 내부 JSONL 형식은 안정된 공개 계약이 아니므로 수집 이벤트에 `cli_version`과 `parser_version`을 함께 기록한다.
+
 ## 토큰 의미
 
 ```text

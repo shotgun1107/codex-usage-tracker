@@ -8,14 +8,13 @@
 
 ### Q-001. fork·resume·compact의 토큰 기준선
 
-- 질문: 첫 토큰 이벤트와 fork·resume·compact 이후 누적값은 기존 사용량을 포함하는가?
-- 위험: 부모 이력이나 첫 기준선을 실제 사용량으로 잘못 더할 수 있다.
-- 검증:
-  1. 짧은 기준 thread를 만든다.
-  2. 토큰 체크포인트를 기록한다.
-  3. resume·fork·compact를 각각 수행한다.
-  4. 원본과 파생 thread의 첫 체크포인트와 증가량을 비교한다.
-- 완료 기준: 각 lifecycle별 기준선·리셋·중복 제외 규칙을 수치로 설명할 수 있다.
+- 상태: 현재 CLI 버전에 대해 부분 해결
+- 결과: resume는 같은 누적 카운터를 계속 사용하며 프로세스 재시작 후에도 초기화되지 않았다.
+- 결과: fork는 부모 이력과 누적 체크포인트를 복사하고, 복사된 작업의 `turn_id`도 유지했다.
+- 결과: fork 이후 새 작업만 새로운 `turn_id`를 사용했으며 부모 누적값은 변하지 않았다.
+- 결과: compact는 누적값을 유지했지만 세부 항목이 0인 별도 `last_token_usage.total_tokens`를 기록했다.
+- 남은 질문: compact의 불투명한 reported last가 실제 모델 사용량·계정 한도에 포함되는가?
+- 완료 기준: compact overhead의 의미와 합산 정책을 정한다.
 
 ### Q-002. JSONL과 SQLite의 역할
 
@@ -23,6 +22,7 @@
 - 결과: 631개 thread 모두 `SQLite threads.id = rollout UUID = session_meta.id`로 조인됐다.
 - 결과: `session_meta.session_id`는 고유 thread ID가 아니라 계보 root다.
 - 결과: JSONL은 상세 이벤트, SQLite는 인덱스·spawn-edge·최신 요약으로 역할이 나뉜다.
+- 결과: lifecycle 통제 실험에서도 JSONL 마지막 누적값과 SQLite `tokens_used`가 일치했다.
 - 남은 질문: 현재 표본에 없는 `cli`, `appServer`, 별도 백그라운드 실행에서도 같은 규칙이 유지되는가?
 - 완료 기준: 통제 실험에서 실행 종류별 조인과 누락 폴백을 확인한다.
 
@@ -32,15 +32,19 @@
 - 결과: `subagent.thread_spawn` 310개가 spawn-edge child 310개와 정확히 일치했다.
 - 결과: edge가 없는 `subagent.other` 175개도 `session_meta.session_id`로 존재하는 root에 연결됐다.
 - 결과: 현재 edge에는 누락된 부모·자식, 다중 부모, 순환 관계가 없었다.
-- 남은 질문: CLI·백그라운드·fork·재개된 자식의 직접 관계도 같은 방식으로 남는가?
+- 결과: fork는 spawn-edge가 없지만 JSONL 첫 `session_meta.forked_from_id`로 부모를 명시했다.
+- 주의: 현재 통제 실험의 fork 자식 `session_id`는 부모 root가 아니라 자식 자신이므로 fork 연결에 사용하지 않는다.
+- 남은 질문: CLI·백그라운드·재개된 spawn 자식의 직접 관계도 같은 방식으로 남는가?
 - 완료 기준: 통제 실험에서 실행 종류별 edge와 root 연결을 확인한다.
 
 ### Q-004. 첫 token_count 이벤트
 
-- 질문: 첫 이벤트는 실제 첫 사용량인가, 이전 누적 상태를 담은 기준선인가?
-- 현재 관찰: compact 표본에서 첫 누적값과 `last_token_usage`가 달랐다.
-- 검증: 새 thread와 기존 thread에서 첫 이벤트를 비교한다.
-- 완료 기준: 신규·기존·fork thread별 첫 이벤트 처리 규칙을 정의한다.
+- 상태: 현재 CLI 버전에 대해 해결
+- 신규 thread: 첫 누적값과 첫 turn 사용량이 일치했다.
+- resume thread: 새 기준선을 만들지 않고 기존 누적값을 이어갔다.
+- fork thread: 첫 체크포인트는 부모의 복사된 기준선이므로 새 사용량이 아니다.
+- 처리 규칙: token_count를 현재 `task_started.turn_id`에 연결하고, fork에서 복사된 동일 turn을 중복 제거한다.
+- 회귀 조건: 다른 `cli_version`에서 구조가 바뀌면 다시 검증한다.
 
 ### Q-005. Git 메타데이터 누락
 
@@ -89,6 +93,6 @@
 ## 다음 Spike 순서
 
 1. ~~JSONL·SQLite source map과 조인 키 확인~~ — 기존 로그 기준 완료
-2. fork·resume·compact 토큰 기준선 실험
+2. ~~fork·resume·compact 토큰 기준선 실험~~ — 현재 CLI 버전 기준 완료, compact overhead 의미는 결정 대기
 3. CLI·백그라운드·오케스트레이션 귀속 통제 실험
 4. Git 메타데이터 누락과 미분류 폴백 실험

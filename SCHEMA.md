@@ -1,6 +1,6 @@
 # 데이터 스키마 초안
 
-상태: Spike 1 반영 초안
+상태: Spike 2 반영 초안
 스키마 버전: 미정
 
 이 문서는 원천 데이터와 GitHub 중앙 장부의 구조를 정의한다. 미확인 필드는 구현 전에 Spike로 검증한다.
@@ -23,6 +23,7 @@ Codex JSONL + Codex SQLite
 
 - `session_meta.id`: SQLite와 조인하는 논리 thread ID
 - `session_meta.session_id`: 현재 session tree의 root thread ID
+- `session_meta.forked_from_id`: fork의 직접 원본 thread ID
 - `session_meta`: source, cwd, Codex 버전, Git 정보
 - `turn_context`: turn, cwd, model, reasoning effort
 - `event_msg.token_count`: 누적 토큰 체크포인트
@@ -92,7 +93,10 @@ SQLite → thread 목록, rollout 위치, 직접 spawn-edge, 최신 tokens_used 
   "session_id": "session-id-or-null",
   "root_session_id": "root-id-or-null",
   "parent_thread_id": "parent-id-or-null",
+  "forked_from_thread_id": "fork-source-id-or-null",
   "turn_id": "turn-id-or-null",
+  "token_event_ordinal": 0,
+  "operation": "turn|compact|unknown",
   "occurred_at": "UTC timestamp",
   "model": "model-id-or-null",
   "reasoning_effort": "effort-or-null",
@@ -113,6 +117,14 @@ SQLite → thread 목록, rollout 위치, 직접 spawn-edge, 최신 tokens_used 
     "reasoning_output_tokens": 0,
     "total_tokens": 0
   },
+  "reported_last": {
+    "input_tokens": 0,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 0,
+    "reasoning_output_tokens": 0,
+    "total_tokens": 0
+  },
   "source": {
     "kind": "vscode|cli|exec|appServer|subAgent|subAgentReview|subAgentCompact|subAgentThreadSpawn|subAgentOther|unknown",
     "rollout_fingerprint": "opaque-id",
@@ -124,6 +136,8 @@ SQLite → thread 목록, rollout 위치, 직접 spawn-edge, 최신 tokens_used 
 `null`은 정보가 없음을 의미한다. 필드가 없는 구버전과 숫자 0을 구분해야 한다.
 
 `cache_write_input_tokens`는 현재 로그 일부에서 누락되므로 필수 숫자가 아니라 nullable 버전별 필드로 취급한다.
+
+`reported_last`는 Codex가 기록한 `last_token_usage`의 원형이다. 일반 turn에서는 delta 검증에 사용하고, compact처럼 누적 차이와 의미가 다른 경우에도 삭제하지 않고 보존한다.
 
 ### mapping_event
 
@@ -167,8 +181,21 @@ ledger/
 - 동일 누적값 반복: 증가량 0
 - 계산한 입력 + 출력과 total이 다르면 경고
 - `last_token_usage`는 증가량 검증에 사용
-- 첫 이벤트, 누적값 감소, fork·resume·compact는 검증 후 확정
+- 신규 일반 thread의 첫 누적값: 첫 사용량으로 처리
+- resume: 이전 체크포인트를 이어서 delta 계산
+- token_count: 가장 가까운 미완료 `task_started.turn_id`에 연결
+- fork: 복사된 부모 turn의 체크포인트는 중복 사용량으로 제외
+- compact: 누적값이 같으면 일반 delta 0, 불투명한 `reported_last`는 별도 보존
+- 누적값 감소와 compact overhead 합산은 추가 검증·결정 필요
 - 날짜 귀속은 이벤트 종료 시각을 기준으로 하는 근사임을 표시
+
+fork 통제 실험에서 복사된 부모 작업은 원본과 같은 `turn_id`와 같은 token payload 순서를 유지했다. 따라서 현재 멱등 키 후보는 다음과 같다.
+
+```text
+source_event_id = hash(turn_id + token_event_ordinal)
+```
+
+이 규칙은 fork의 복사 이력을 제거할 수 있지만, 여러 기기와 구버전 로그에서도 turn ID가 안정적으로 유지되는지 확인한 뒤 확정한다.
 
 ## 프로젝트 귀속 규칙 제안
 
