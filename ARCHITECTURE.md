@@ -334,19 +334,19 @@ tests/
 - privacy leak fixture가 commit guard에서 차단되는지 확인
 - Windows 경로·Unicode·partial line·파일 이동을 별도 테스트
 
-## 구현 순서 후보
+## 구현 순서와 현재 상태
 
-1. domain event·HMAC·remote normalization
-2. JSONL token parser와 lifecycle delta
-3. SQLite lineage adapter와 project attribution
-4. local SQLite outbox·read model
-5. ledger writer·replay·JSON Schema validation
-6. CLI collect·doctor
-7. report table·Markdown
-8. Git sync
-9. quota 보조 수집
+1. ✅ domain HMAC·remote normalization
+2. ✅ JSONL token parser와 lifecycle delta
+3. ✅ SQLite lineage adapter와 turn별 project attribution
+4. ⏳ local SQLite outbox·read model
+5. ⏳ ledger writer·replay·JSON Schema validation
+6. ⏳ CLI collect·doctor
+7. ⏳ report table·Markdown
+8. ⏳ Git sync
+9. ⏳ quota 보조 수집
 
-실제 Build 단계 착수와 순서는 설계 승인 후 확정한다.
+다음 구현 단위는 4번인 local SQLite outbox·read model이다.
 
 ## ADR 목록
 

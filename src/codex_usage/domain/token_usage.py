@@ -88,6 +88,7 @@ class RawTokenCheckpoint:
     reasoning_effort: str | None
     cumulative: TokenCounts
     reported_last: TokenCounts | None
+    activity_workdirs: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if not self.rollout_thread_id:

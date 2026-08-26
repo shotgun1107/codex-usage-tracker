@@ -409,6 +409,30 @@ remote 변경: alias 이벤트로 과거·현재 연결
 
 이 검증으로 현재 13개 `cli_version` 표본에서 신규·resume·fork·compact delta와 전역 fork dedup이 중단 없이 동작함을 확인했다. 버전별 지원을 영구 보장하는 것은 아니므로 unknown 구조는 계속 fail-closed 또는 issue로 남긴다.
 
+## Build 검증: SQLite lineage와 프로젝트 귀속 (2026-08-26)
+
+현재 구현을 같은 로컬 원문에 read-only로 적용했다. 결과에는 개수와 판별 방식만 남기고 thread ID·경로·remote·프로젝트명은 출력하지 않았다. active 파일은 계속 변하므로 아래 수치는 해당 시점 snapshot이다.
+
+- SQLite thread 669개와 spawn-edge 325개를 adapter 오류 없이 읽음
+- rollout 669개를 fatal parse error 없이 처리
+- fork 복사 제거 후 logical token checkpoint 54,004개
+- 부모 충돌·계보 cycle 0개
+- 서로 다른 실제 project identity 6개를 로컬에서 식별
+- 43,989개 checkpoint(약 81.5%)를 자동 귀속
+- 10,015개는 근거가 부족해 `unclassified` 유지
+
+자동 귀속 근거별 개수:
+
+| 근거 | checkpoint |
+|---|---:|
+| thread 자기 origin | 25,323 |
+| 단일 자식 합의 | 17,373 |
+| turn 활동 Git | 856 |
+| 가장 가까운 부모 | 338 |
+| root | 99 |
+
+이 검증은 프로젝트 밖 오케스트레이터와 다수 자식 thread를 실제로 합산할 수 있음을 보여준다. 동시에 오래된 로그나 Git 근거가 없는 작업 약 18.5%는 수동 매핑 없이는 정확히 복구할 수 없으므로, 자동 추측하지 않는 현재 정책을 유지한다.
+
 ## 토큰 의미
 
 ```text

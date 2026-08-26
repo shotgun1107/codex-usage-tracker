@@ -145,12 +145,54 @@ class CodexJsonlParserTests(unittest.TestCase):
                 for index, value in enumerate(counts)
             ],
         ]
+        lines.insert(
+            4,
+            encode(
+                {
+                    "timestamp": "2026-08-26T01:00:03Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "custom_tool_call",
+                        "name": "exec",
+                        "input": (
+                            "const result = await tools.exec_command({\n"
+                            '  cmd: "git status",\n'
+                            '  workdir: "C:\\\\repo-a"\n'
+                            "});"
+                        ),
+                    },
+                }
+            ),
+        )
+        lines.append(
+            encode(
+                {
+                    "timestamp": "2026-08-26T01:00:05Z",
+                    "type": "response_item",
+                    "payload": {
+                        "type": "function_call",
+                        "name": "exec_command",
+                        "arguments": json.dumps(
+                            {"options": {"workdir": "C:/repo-b"}}
+                        ),
+                    },
+                }
+            )
+        )
 
         result = parse_rollout(lines)
 
         self.assertEqual(
             [checkpoint.token_event_ordinal for checkpoint in result.checkpoints],
             [0, 1],
+        )
+        self.assertEqual(
+            result.checkpoints[0].activity_workdirs,
+            ("C:/repo-b", "C:\\repo-a"),
+        )
+        self.assertEqual(
+            result.checkpoints[1].activity_workdirs,
+            ("C:/repo-b", "C:\\repo-a"),
         )
 
     def test_token_without_info_is_skipped_with_issue(self) -> None:

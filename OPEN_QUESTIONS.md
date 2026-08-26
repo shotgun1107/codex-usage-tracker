@@ -60,8 +60,11 @@
 - Spike 4: `origin`이 없으면 remote 하나가 있어도 Codex URL은 비었지만, 로컬 Git 조회로 unique remote를 복구할 수 있었다.
 - Spike 4: worktree는 원본 remote, submodule은 자기 remote, monorepo 하위 폴더는 루트 remote를 기록했다.
 - Spike 4: remote 변경 전후 로그는 각각 당시 URL을 보존하므로 alias 연결이 필요하다.
-- 남은 질문: remote 없는 저장소를 여러 기기에서 연결할 명시적 project marker를 둘 것인가?
-- 완료 기준: 로컬 전용 저장소의 수동·명시적 연결 방식을 결정한다.
+- Build 검증: turn 활동 Git·자기 Git·계보 합의까지 적용해 logical checkpoint 54,004개 중 43,989개(약 81.5%)를 자동 귀속했다.
+- Build 검증: 근거가 부족한 10,015개는 잘못 합치지 않고 `unclassified`로 유지했다.
+- 결정: remote 없는 저장소는 append-only `local_repo_link` 수동 매핑으로 여러 기기에서 같은 project ID에 연결한다(D-034).
+- 남은 질문: 실제 사용자 흐름에서 수동 매핑을 입력·검토하는 CLI 모양.
+- 완료 기준: `collect --map-project` 계열 CLI acceptance test에서 다기기 매핑을 재현한다.
 
 ### Q-006. 캐시 read/write와 토큰 필드의 버전 차이
 

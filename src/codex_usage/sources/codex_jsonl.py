@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import json
+import re
 
 from codex_usage.domain.token_usage import (
     Operation,
@@ -56,6 +57,12 @@ class RolloutParseResult:
     issues: tuple[ParseIssue, ...]
 
 
+_JS_WORKDIR = re.compile(
+    r'(?m)^[ \t]*(?:workdir|cwd)[ \t]*:[ \t]*'
+    r'(?P<value>"(?:\\.|[^"\\])*")'
+)
+
+
 def parse_rollout(lines: Iterable[str]) -> RolloutParseResult:
     """Parse complete JSONL lines from one Codex rollout.
 
@@ -72,6 +79,7 @@ def parse_rollout(lines: Iterable[str]) -> RolloutParseResult:
     current_operation = Operation.UNKNOWN
     current_model: str | None = None
     current_effort: str | None = None
+    activity_by_turn: dict[str, set[str]] = {}
 
     for record_index, line in enumerate(lines, start=1):
         try:
@@ -102,6 +110,12 @@ def parse_rollout(lines: Iterable[str]) -> RolloutParseResult:
                 payload.get("effort", payload.get("reasoning_effort"))
             )
             continue
+
+        activity_workdirs = _extract_activity_workdirs(outer_type, payload)
+        if current_turn_id is not None and activity_workdirs:
+            activity_by_turn.setdefault(current_turn_id, set()).update(
+                activity_workdirs
+            )
 
         if outer_type == "compacted":
             current_operation = Operation.COMPACT
@@ -184,6 +198,15 @@ def parse_rollout(lines: Iterable[str]) -> RolloutParseResult:
 
     if metadata is None:
         raise RolloutParseError(1, "rollout does not contain session_meta")
+    checkpoints = [
+        replace(
+            checkpoint,
+            activity_workdirs=tuple(
+                sorted(activity_by_turn.get(checkpoint.turn_id, ()))
+            ),
+        )
+        for checkpoint in checkpoints
+    ]
     return RolloutParseResult(
         metadata=metadata,
         checkpoints=tuple(checkpoints),
@@ -245,6 +268,81 @@ def _normalize_source(source: object) -> tuple[str, str | None]:
         )
         return (normalized_name, parent_id)
     return ("subAgent", None)
+
+
+def _extract_activity_workdirs(
+    outer_type: object,
+    payload: Mapping[str, object],
+) -> tuple[str, ...]:
+    discovered: set[str] = set()
+
+    if outer_type == "response_item":
+        payload_type = payload.get("type")
+        if payload_type in {"custom_tool_call", "function_call"}:
+            raw_input = payload.get("input", payload.get("arguments"))
+            discovered.update(_workdirs_from_tool_input(raw_input))
+        if payload_type in {"commandExecution", "command_execution"}:
+            cwd = _optional_string(payload.get("cwd"))
+            if cwd is not None:
+                discovered.add(cwd)
+
+    if outer_type == "event_msg" and payload.get("type") in {
+        "item_started",
+        "item_completed",
+    }:
+        item = payload.get("item")
+        if isinstance(item, Mapping) and item.get("type") in {
+            "commandExecution",
+            "command_execution",
+        }:
+            cwd = _optional_string(item.get("cwd"))
+            if cwd is not None:
+                discovered.add(cwd)
+
+    return tuple(sorted(discovered))
+
+
+def _workdirs_from_tool_input(raw_input: object) -> tuple[str, ...]:
+    if isinstance(raw_input, Mapping):
+        discovered: set[str] = set()
+        _collect_json_workdirs(raw_input, discovered)
+        return tuple(sorted(discovered))
+    if not isinstance(raw_input, str) or not raw_input:
+        return ()
+
+    try:
+        decoded = json.loads(raw_input)
+    except json.JSONDecodeError:
+        decoded = None
+    if isinstance(decoded, Mapping):
+        discovered = set()
+        _collect_json_workdirs(decoded, discovered)
+        return tuple(sorted(discovered))
+
+    discovered = set()
+    for match in _JS_WORKDIR.finditer(raw_input):
+        try:
+            value = json.loads(match.group("value"))
+        except json.JSONDecodeError:
+            continue
+        if isinstance(value, str) and value:
+            discovered.add(value)
+    return tuple(sorted(discovered))
+
+
+def _collect_json_workdirs(
+    value: Mapping[str, object],
+    discovered: set[str],
+) -> None:
+    for key, child in value.items():
+        if key in {"workdir", "cwd"} and isinstance(child, str) and child:
+            discovered.add(child)
+        elif isinstance(child, Mapping):
+            _collect_json_workdirs(child, discovered)
+        elif isinstance(child, list):
+            for item in child:
+                if isinstance(item, Mapping):
+                    _collect_json_workdirs(item, discovered)
 
 
 def _parse_timestamp(value: object, record_index: int) -> datetime:
