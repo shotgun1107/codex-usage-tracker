@@ -15,6 +15,8 @@
 - thread 시작·재개·fork·compact
 - fork의 `sessionId`와 `forkedFromId`
 - thread 계보 조회에 사용할 수 있는 부모·조상 개념
+- 공식 thread source 종류는 `cli`, `vscode`, `exec`, `appServer`, 여러 `subAgent` 종류, `unknown`이며 별도 `background` source는 없다.
+- `commandExecution` item에는 실행 `cwd`가 있고 `collabToolCall`에는 송신·수신·신규 thread ID가 있다.
 
 공식 문서는 로컬 rollout JSONL과 SQLite의 모든 내부 스키마를 안정된 계약으로 보장하지 않는다. 따라서 로컬 파서는 Codex 버전을 함께 기록하고 실제 데이터를 검증해야 한다.
 
@@ -252,6 +254,73 @@ compact            → 누적 차이는 0, 불투명한 reported last는 별도 
 ```
 
 이 결과는 현재 CLI 버전의 통제 실험 결과다. 내부 JSONL 형식은 안정된 공개 계약이 아니므로 수집 이벤트에 `cli_version`과 `parser_version`을 함께 기록한다.
+
+## Spike 3: CLI·백그라운드·오케스트레이션 귀속 실험 (2026-08-26)
+
+Codex CLI `0.150.0-alpha.8`에서 Git 저장소 안·밖의 `codex exec`, 숨김 백그라운드 프로세스, 프로젝트 안·밖 오케스트레이터의 자식 작업을 비교했다. 파일은 변경하지 않았고 원문 명령과 경로는 결과 문서에 보존하지 않았다.
+
+### CLI와 백그라운드 실행
+
+| 실행 조건 | 기록된 source | session Git 정보 | SQLite·JSONL 조인 |
+|---|---|---|---|
+| Git 저장소 안 `codex exec` | `exec` | remote·branch·commit 있음 | 성공 |
+| Git 저장소 밖 `codex exec` | `exec` | 없음 | 성공 |
+| 숨김 백그라운드 `codex exec` | `exec` | 실행 위치의 Git 정보 있음 | 성공 |
+
+백그라운드는 별도 thread source가 아니라 실행 방식이다. 프로젝트 귀속은 foreground/background 여부가 아니라 세션과 실제 작업 위치의 Git 정보로 판단해야 한다.
+
+### 프로젝트 안 오케스트레이션
+
+프로젝트 폴더에서 생성한 자식은 다음 정보를 정상적으로 보존했다.
+
+- source: `subagent.thread_spawn`
+- 자식 `cwd`: 부모와 같은 프로젝트 폴더
+- 자식 Git remote·branch·commit: 모두 존재
+- `session_id`: 최상위 부모 계보 root
+- SQLite `thread_spawn_edges`: 직접 부모·자식 edge 존재
+
+이 경우 자기 Git 정보만으로 프로젝트를 판별할 수 있고, spawn-edge는 프로젝트 전체 계보 집계에 사용할 수 있다.
+
+### 프로젝트 밖 오케스트레이션
+
+Git이 없는 폴더에서 부모 `exec`를 시작하고 자식에게 실제 Git 프로젝트를 읽게 한 결과:
+
+- 부모는 `source=exec`, Git 정보 없음
+- 자식은 `source=subagent.thread_spawn`, spawn-edge 존재
+- 자식 `session_meta.cwd`와 `turn_context.cwd`는 부모의 Git 밖 폴더를 유지
+- 자식도 session Git 정보 없음
+- 자식이 실제 프로젝트 폴더를 사용한 세 번의 도구 호출에는 각각 대상 `workdir`가 기록됨
+
+즉 자식이 다른 프로젝트에서 실제로 작업해도 session·turn의 기본 `cwd`는 자동으로 바뀌지 않는다. 부모 상속만으로는 프로젝트를 알아낼 수 없고, 세션 단위 Git만 사용하면 이 사용량은 미분류가 된다.
+
+### 귀속에 사용할 수 있는 추가 신호
+
+공식 App Server의 `commandExecution.cwd`와 실제 rollout의 도구 호출 `workdir`는 로컬에서 읽을 수 있다. 따라서 대화·명령 원문을 업로드하지 않고도 다음 처리가 가능하다.
+
+```text
+turn 안의 도구 실행 workdir 수집
+→ 각 workdir의 Git remote를 로컬에서 해석
+→ 서로 다른 remote가 정확히 하나면 해당 project_id로 귀속
+→ 중앙 장부에는 경로·remote 원문 대신 project_id와 판별 방식만 저장
+```
+
+한 turn이 여러 저장소를 사용하면 토큰을 정확히 분할할 근거가 없다. 이 경우 임의로 한 프로젝트에 넣지 않고 `ambiguous_multi_repo`로 보존하거나 사용자가 수동 지정해야 한다.
+
+### Spike 3 결론
+
+프로젝트 귀속 단위는 thread 하나가 아니라 usage event가 속한 turn이어야 한다. 현재 제안 우선순위는 다음과 같다.
+
+```text
+명시적 수동 지정
+→ turn의 도구 실행 위치에서 확인한 단일 Git 저장소
+→ thread 자체 Git 저장소
+→ 가장 가까운 부모·root의 프로젝트
+→ 단일 자식 저장소 합의
+→ 로컬 매핑
+→ 미분류 또는 다중 저장소 모호 상태
+```
+
+도구 실행 위치를 읽는 작업은 각 기기 안에서만 수행하고, 원문 경로와 명령은 중앙 장부에 올리지 않는다.
 
 ## 토큰 의미
 

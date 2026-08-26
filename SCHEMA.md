@@ -88,7 +88,8 @@ SQLite → thread 목록, rollout 위치, 직접 spawn-edge, 최신 tokens_used 
   "parser_version": "TBD",
   "device_id": "uuid",
   "project_id": "opaque-id-or-null",
-  "project_resolution": "self_git|parent|manual|unclassified",
+  "project_resolution": "manual|activity_git|self_git|ancestor|root|descendant_consensus|ambiguous_multi_repo|unclassified",
+  "activity_repository_count": 0,
   "thread_id": "thread-id",
   "session_id": "session-id-or-null",
   "root_session_id": "root-id-or-null",
@@ -201,15 +202,23 @@ source_event_id = hash(turn_id + token_event_ordinal)
 
 ```text
 수동 지정
-→ 현재 작업의 Git repository
+→ 현재 turn의 도구 실행 workdir들이 가리키는 단일 Git repository
+→ 현재 thread의 Git repository
 → 가장 가까운 분류된 부모 작업
 → session tree root의 프로젝트
 → Git 없는 오케스트레이터의 분류된 자식들이 정확히 하나의 repository만 가리킬 때 해당 repository
 → 로컬 매핑
-→ 미분류
+→ 미분류 또는 ambiguous_multi_repo
 ```
 
-Spike 1에서 부모와 자식의 Git 저장소가 다른 edge 64개가 확인됐다. 따라서 자기 Git 정보를 부모 상속보다 우선하는 방향은 근거가 생겼지만 최종 정책은 사용자 승인 전이다. 자식 저장소 역추론도 자식들이 여러 저장소를 가리키면 적용하지 않는다.
+Spike 1에서 부모와 자식의 Git 저장소가 다른 edge 64개가 확인됐다. Spike 3에서는 session Git 정보가 없는 자식도 실제 도구 호출 `workdir`에서 프로젝트를 사용했다. 따라서 프로젝트 판별은 thread 기본값과 turn별 실제 활동을 분리해야 한다.
+
+수집기는 도구 호출의 명령 원문을 중앙 장부에 저장하지 않는다. 로컬에서 `workdir → Git remote → project_id`로 변환한 뒤 `project_id`, `project_resolution`, `activity_repository_count`만 기록한다.
+
+- 활동 remote 1개: `activity_git`
+- 활동 remote 0개: thread·계보 폴백 사용
+- 활동 remote 2개 이상: `ambiguous_multi_repo`, 자동 분할 금지
+- 자식 저장소 역추론: 자식들이 하나의 저장소에 합의할 때만 사용
 
 ## 멱등과 정정
 

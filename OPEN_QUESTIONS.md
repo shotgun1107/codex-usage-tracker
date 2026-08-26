@@ -23,7 +23,8 @@
 - 결과: `session_meta.session_id`는 고유 thread ID가 아니라 계보 root다.
 - 결과: JSONL은 상세 이벤트, SQLite는 인덱스·spawn-edge·최신 요약으로 역할이 나뉜다.
 - 결과: lifecycle 통제 실험에서도 JSONL 마지막 누적값과 SQLite `tokens_used`가 일치했다.
-- 남은 질문: 현재 표본에 없는 `cli`, `appServer`, 별도 백그라운드 실행에서도 같은 규칙이 유지되는가?
+- 결과: Git 안·밖과 숨김 백그라운드의 `codex exec`가 모두 `source=exec`로 기록되고 SQLite·JSONL이 연결됐다.
+- 남은 질문: 현재 표본에 없는 interactive `cli`와 명시적 `appServer` source에서도 같은 규칙이 유지되는가?
 - 완료 기준: 통제 실험에서 실행 종류별 조인과 누락 폴백을 확인한다.
 
 ### Q-003. 부모·자식 spawn-edge의 완전성
@@ -34,7 +35,8 @@
 - 결과: 현재 edge에는 누락된 부모·자식, 다중 부모, 순환 관계가 없었다.
 - 결과: fork는 spawn-edge가 없지만 JSONL 첫 `session_meta.forked_from_id`로 부모를 명시했다.
 - 주의: 현재 통제 실험의 fork 자식 `session_id`는 부모 root가 아니라 자식 자신이므로 fork 연결에 사용하지 않는다.
-- 남은 질문: CLI·백그라운드·재개된 spawn 자식의 직접 관계도 같은 방식으로 남는가?
+- 결과: 프로젝트 안·밖의 통제 실험에서 `subagent.thread_spawn` 자식이 모두 직접 spawn-edge와 root `session_id`를 가졌다.
+- 남은 질문: 재개된 spawn 자식과 `subagent.other`의 직접 관계가 버전별로 어떻게 달라지는가?
 - 완료 기준: 통제 실험에서 실행 종류별 edge와 root 연결을 확인한다.
 
 ### Q-004. 첫 token_count 이벤트
@@ -52,6 +54,8 @@
 - 현재 관찰: Spike 1 시점 631개 thread 중 repository URL이 있는 thread는 376개였다.
 - 현재 관찰: 자기·부모·root·단일 자식 저장소를 사용한 제안 규칙으로 386개를 자동 분류하고 245개는 미분류로 남았다.
 - 현재 관찰: 부모와 자식 저장소가 다른 spawn-edge가 64개 있어 자기 Git을 우선해야 한다.
+- Spike 3: Git 밖 `exec`는 Git 메타데이터가 없고, 그 부모가 만든 자식도 실제 프로젝트에서 작업했지만 기본 cwd와 Git 정보는 부모의 Git 밖 상태를 유지했다.
+- Spike 3: 실제 프로젝트를 사용한 도구 호출의 `workdir`는 rollout에 남아 로컬 Git 판별에 사용할 수 있었다.
 - 검증: Git 밖, remote 없는 repo, worktree, submodule, 프로젝트 밖 오케스트레이션을 비교한다.
 - 완료 기준: 자동 판별 우선순위와 미분류 조건을 정의한다.
 
@@ -74,6 +78,13 @@
 - 확인 내용: 라이선스, 지원 필드, 버전 호환, 증분 읽기, fork 처리.
 - 완료 기준: 재사용·부분 차용·자체 구현 중 하나를 근거와 함께 선택한다.
 
+### Q-009. 한 turn에서 여러 저장소를 사용한 경우
+
+- 질문: 한 turn이 둘 이상의 Git 저장소를 건드렸을 때 토큰을 어느 프로젝트에 귀속할 것인가?
+- 현재 한계: token_count는 모델 응답 구간의 사용량이지 저장소별 사용량이 아니므로 정확한 분할 근거가 없다.
+- 제안: 자동 분할하지 않고 `ambiguous_multi_repo`로 저장한 뒤 수동 지정한다.
+- 완료 기준: 실제 다중 저장소 turn을 만들고 활동 workdir 집합과 토큰 이벤트 순서를 비교한다.
+
 ## 설계 결정 대기
 
 다음은 로그 검증이 아니라 사용자와 프로젝트가 정할 사항이다.
@@ -85,6 +96,7 @@
 - 멱등 키 구성
 - 이벤트 정정과 supersede 방식
 - 부모 상속과 자식 Git 정보가 충돌할 때의 우선순위
+- 한 turn이 여러 저장소를 사용할 때의 처리 방식
 - monorepo 분류 단위
 - 장부 보존·롤업 정책
 
@@ -94,5 +106,5 @@
 
 1. ~~JSONL·SQLite source map과 조인 키 확인~~ — 기존 로그 기준 완료
 2. ~~fork·resume·compact 토큰 기준선 실험~~ — 현재 CLI 버전 기준 완료, compact overhead 의미는 결정 대기
-3. CLI·백그라운드·오케스트레이션 귀속 통제 실험
+3. ~~CLI·백그라운드·오케스트레이션 귀속 통제 실험~~ — 완료, turn 활동 위치가 필요한 사례 확인
 4. Git 메타데이터 누락과 미분류 폴백 실험
