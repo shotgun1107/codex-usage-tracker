@@ -43,7 +43,13 @@
 
 ## 제안된 결정
 
-현재 제안 상태로 남은 결정은 없다.
+| ID | 제안 | 상태 |
+|---|---|---|
+| D-036 | v1은 Python 3.12+ modular monolith CLI로 구현한다. | ADR-001, 설계 승인 대기 |
+| D-037 | JSONL은 상세 token 원천, SQLite는 inventory·lineage 원천으로 사용하는 이중 adapter 구조를 사용한다. | ADR-002, 설계 승인 대기 |
+| D-038 | 로컬 SQLite outbox와 재생성 가능한 read model을 함께 사용한다. | ADR-003·006, 설계 승인 대기 |
+| D-039 | HMAC 키는 Windows Credential Manager에 저장하고 비가역 key ID로 기기 불일치를 탐지한다. | ADR-004, 설계 승인 대기 |
+| D-040 | Git sync conflict·privacy failure·key mismatch는 자동 해결하지 않고 안전하게 중단한다. | ADR-003·004, 설계 승인 대기 |
 
 ## 해결된 보류 항목
 

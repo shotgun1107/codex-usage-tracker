@@ -110,3 +110,4 @@ flowchart LR
 - [미확인 사항](OPEN_QUESTIONS.md)
 - [데이터 스키마](SCHEMA.md)
 - [v1 제품 요구사항](PRD.md)
+- [v1 아키텍처](ARCHITECTURE.md)

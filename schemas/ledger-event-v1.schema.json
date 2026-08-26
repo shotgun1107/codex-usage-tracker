@@ -72,26 +72,6 @@
         }
       }
     },
-    "revisionFields": {
-      "type": "object",
-      "required": [
-        "event_id",
-        "revision",
-        "supersedes"
-      ],
-      "properties": {
-        "event_id": {
-          "$ref": "#/$defs/opaqueId"
-        },
-        "revision": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "supersedes": {
-          "$ref": "#/$defs/nullableOpaqueId"
-        }
-      }
-    },
     "usageEvent": {
       "type": "object",
       "additionalProperties": false,
@@ -105,6 +85,7 @@
         "voided",
         "parser_version",
         "device_id",
+        "key_id",
         "project_id",
         "project_resolution",
         "activity_repository_count",
@@ -155,6 +136,9 @@
         "device_id": {
           "type": "string",
           "format": "uuid"
+        },
+        "key_id": {
+          "$ref": "#/$defs/opaqueId"
         },
         "project_id": {
           "$ref": "#/$defs/nullableOpaqueId"
@@ -281,6 +265,7 @@
         "revision",
         "supersedes",
         "device_id",
+        "key_id",
         "occurred_at",
         "kind",
         "subject_type",
@@ -308,6 +293,9 @@
         "device_id": {
           "type": "string",
           "format": "uuid"
+        },
+        "key_id": {
+          "$ref": "#/$defs/opaqueId"
         },
         "occurred_at": {
           "$ref": "#/$defs/timestamp"
@@ -353,6 +341,7 @@
         "event_type",
         "event_id",
         "device_id",
+        "key_id",
         "occurred_at",
         "scope_key",
         "window_minutes",
@@ -373,6 +362,9 @@
         "device_id": {
           "type": "string",
           "format": "uuid"
+        },
+        "key_id": {
+          "$ref": "#/$defs/opaqueId"
         },
         "occurred_at": {
           "$ref": "#/$defs/timestamp"

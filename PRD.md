@@ -111,6 +111,7 @@ codex-usage project link --thread <local-thread-id> --project <project-id>
 - 각 기기에 영구 device UUID를 한 번 생성한다.
 - 비공개 장부 경로와 기본 표시 시간대를 설정한다.
 - 기존 공유 HMAC 키 입력 또는 새 키 생성을 지원한다.
+- 비가역 key ID를 계산해 장부의 기존 key ID와 일치하는지 확인한다.
 - 키·Git 인증정보는 장부에 커밋하지 않는다.
 
 ### FR-002. 원천 데이터 탐색
@@ -169,6 +170,7 @@ codex-usage project link --thread <local-thread-id> --project <project-id>
 
 - normalized remote로부터 공유 HMAC 키를 사용해 project ID를 만든다.
 - thread·turn·root·parent·fork 식별자도 HMAC key로 저장한다.
+- 이벤트에는 비밀을 노출하지 않는 key ID를 저장해 기기별 키 불일치를 탐지한다.
 - 중앙 장부에 프롬프트·응답·코드·명령·출력·로컬 경로·raw remote·branch를 저장하지 않는다.
 - 프로젝트·기기 표시명은 사용자가 명시적으로 정한 값만 mapping event로 저장한다.
 - 로컬 조회 DB에는 디버깅에 필요한 최소 매핑만 보관한다.
@@ -224,6 +226,7 @@ codex-usage doctor
 - JSONL·SQLite 조인 누락
 - Git 장부 상태와 인증
 - HMAC 키 존재 여부
+- 모든 device 이벤트의 HMAC key ID 일치 여부
 - unclassified·ambiguous 이벤트 수
 - 파서 경고와 마지막 성공 수집 시각
 
@@ -270,6 +273,7 @@ codex-usage doctor
 - [프로젝트 브리프](PROJECT.md)
 - [데이터 스키마](SCHEMA.md)
 - [JSON Schema](schemas/ledger-event-v1.schema.json)
+- [v1 아키텍처](ARCHITECTURE.md)
 - [결정 기록](DECISIONS.md)
 - [조사 기록](RESEARCH.md)
 - [미확인 사항](OPEN_QUESTIONS.md)

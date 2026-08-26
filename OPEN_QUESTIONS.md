@@ -120,4 +120,5 @@
 - CLI·백그라운드·오케스트레이션 귀속: 확인
 - Git 누락·worktree·submodule·monorepo 폴백: 확인
 - 결정 확정: 완료
-- 현재 단계: PRD·스키마 명세 작성 및 검토
+- PRD·스키마 명세: 완료
+- 현재 단계: C4·ADR 설계 검토, Build 승인 대기

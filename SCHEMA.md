@@ -57,6 +57,7 @@ project_id       = HMAC-SHA-256(K, "project:v1:" + normalized_remote)
 thread_key       = HMAC-SHA-256(K, "thread:v1:" + raw_thread_id)
 turn_key         = HMAC-SHA-256(K, "turn:v1:" + raw_turn_id)
 source_event_id  = HMAC-SHA-256(K, "usage:v1:" + raw_turn_id + ":" + ordinal)
+key_id           = HMAC-SHA-256(K, "key-id:v1")의 짧은 비가역 표현
 ```
 
 출력은 타입 접두사와 base64url 또는 hex digest를 사용한다. 예: `prj_h1_...`, `thr_h1_...`.
@@ -100,6 +101,7 @@ source_event_id  = HMAC-SHA-256(K, "usage:v1:" + raw_turn_id + ":" + ordinal)
   "voided": false,
   "parser_version": "0.1.0",
   "device_id": "00000000-0000-4000-8000-000000000001",
+  "key_id": "key_h1_opaque",
   "project_id": "prj_h1_opaque-or-null",
   "project_resolution": "activity_git",
   "activity_repository_count": 1,
@@ -230,6 +232,7 @@ manual assignment
   "revision": 1,
   "supersedes": null,
   "device_id": "00000000-0000-4000-8000-000000000001",
+  "key_id": "key_h1_opaque",
   "occurred_at": "2026-08-26T05:00:00Z",
   "kind": "manual_assignment",
   "subject_type": "thread",
@@ -259,6 +262,7 @@ manual assignment
   "event_type": "quota_snapshot",
   "event_id": "quota_h1_opaque",
   "device_id": "00000000-0000-4000-8000-000000000001",
+  "key_id": "key_h1_opaque",
   "occurred_at": "2026-08-26T05:00:00Z",
   "scope_key": "account_h1_opaque-or-null",
   "window_minutes": 300,
@@ -269,6 +273,8 @@ manual assignment
 ```
 
 quota snapshot은 프로젝트 token 합계 계산에 사용하지 않는다.
+
+장부 replay 전에 모든 event의 `key_id`가 현재 로컬 key ID와 같은지 검사한다. 하나라도 다르면 서로 다른 익명 ID 공간이 섞인 것이므로 replay와 sync를 중단한다.
 
 ## Git 장부 구조
 

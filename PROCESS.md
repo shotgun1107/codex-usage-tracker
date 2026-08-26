@@ -75,8 +75,8 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["기반 정리"] --> B["Discover"] --> C["브리프 v0.4 승인"] --> D["Shape & Spike 완료"] --> E["Plan · PRD 진행 중"]
-    E -. "다음 승인 지점" .-> F["Design · C4 · ADR"]
+    A["기반 정리"] --> B["Discover"] --> C["브리프 v0.4 승인"] --> D["Shape & Spike 완료"] --> E["Plan · PRD 완료"] --> F["Design · C4 · ADR 진행 중"]
+    F -. "다음 승인 지점" .-> G["Build"]
 ```
 
-현재 구현은 시작하지 않았다. Spike 1~4와 설계 결정을 확정했고, `PRD.md`와 스키마 v1 명세를 작성하는 Plan 단계다. 다음은 기획·명세 검토와 사용자 승인 후 Design 단계로 이동한다.
+현재 구현은 시작하지 않았다. PRD와 스키마 v1 명세를 바탕으로 C4 구조, 데이터 흐름, 보안 경계, ADR을 작성하는 Design 단계다. 다음은 설계 검토와 사용자 승인 후 Build 단계로 이동한다.
