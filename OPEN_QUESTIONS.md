@@ -50,14 +50,18 @@
 
 ### Q-005. Git 메타데이터 누락
 
+- 상태: 현재 CLI 버전에 대해 부분 해결
 - 질문: repository URL이 없는 작업을 어떤 정보로 프로젝트에 연결할 수 있는가?
 - 현재 관찰: Spike 1 시점 631개 thread 중 repository URL이 있는 thread는 376개였다.
 - 현재 관찰: 자기·부모·root·단일 자식 저장소를 사용한 제안 규칙으로 386개를 자동 분류하고 245개는 미분류로 남았다.
 - 현재 관찰: 부모와 자식 저장소가 다른 spawn-edge가 64개 있어 자기 Git을 우선해야 한다.
 - Spike 3: Git 밖 `exec`는 Git 메타데이터가 없고, 그 부모가 만든 자식도 실제 프로젝트에서 작업했지만 기본 cwd와 Git 정보는 부모의 Git 밖 상태를 유지했다.
 - Spike 3: 실제 프로젝트를 사용한 도구 호출의 `workdir`는 rollout에 남아 로컬 Git 판별에 사용할 수 있었다.
-- 검증: Git 밖, remote 없는 repo, worktree, submodule, 프로젝트 밖 오케스트레이션을 비교한다.
-- 완료 기준: 자동 판별 우선순위와 미분류 조건을 정의한다.
+- Spike 4: `origin`이 없으면 remote 하나가 있어도 Codex URL은 비었지만, 로컬 Git 조회로 unique remote를 복구할 수 있었다.
+- Spike 4: worktree는 원본 remote, submodule은 자기 remote, monorepo 하위 폴더는 루트 remote를 기록했다.
+- Spike 4: remote 변경 전후 로그는 각각 당시 URL을 보존하므로 alias 연결이 필요하다.
+- 남은 질문: remote 없는 저장소를 여러 기기에서 연결할 명시적 project marker를 둘 것인가?
+- 완료 기준: 로컬 전용 저장소의 수동·명시적 연결 방식을 결정한다.
 
 ### Q-006. 캐시 read/write와 토큰 필드의 버전 차이
 
@@ -107,4 +111,12 @@
 1. ~~JSONL·SQLite source map과 조인 키 확인~~ — 기존 로그 기준 완료
 2. ~~fork·resume·compact 토큰 기준선 실험~~ — 현재 CLI 버전 기준 완료, compact overhead 의미는 결정 대기
 3. ~~CLI·백그라운드·오케스트레이션 귀속 통제 실험~~ — 완료, turn 활동 위치가 필요한 사례 확인
-4. Git 메타데이터 누락과 미분류 폴백 실험
+4. ~~Git 메타데이터 누락과 미분류 폴백 실험~~ — 완료, local-only 연결 방식은 결정 대기
+
+## Shape & Spike 종료 점검
+
+- JSONL·SQLite 역할과 조인 키: 확인
+- lifecycle 토큰 중복 규칙: 확인, compact overhead 의미만 보류
+- CLI·백그라운드·오케스트레이션 귀속: 확인
+- Git 누락·worktree·submodule·monorepo 폴백: 확인
+- 다음 단계: 제안된 결정을 사용자와 확정한 뒤 PRD·스키마 명세 단계로 이동

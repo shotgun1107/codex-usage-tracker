@@ -17,6 +17,8 @@
 - thread 계보 조회에 사용할 수 있는 부모·조상 개념
 - 공식 thread source 종류는 `cli`, `vscode`, `exec`, `appServer`, 여러 `subAgent` 종류, `unknown`이며 별도 `background` source는 없다.
 - `commandExecution` item에는 실행 `cwd`가 있고 `collabToolCall`에는 송신·수신·신규 thread ID가 있다.
+- `thread/start`는 `cwd`를 받고, 저장된 thread의 `gitInfo`는 metadata API에서 별도로 갱신할 수 있다.
+- `thread/inject_items`는 모델 turn 없이 합성 item을 rollout에 영속화할 수 있다.
 
 공식 문서는 로컬 rollout JSONL과 SQLite의 모든 내부 스키마를 안정된 계약으로 보장하지 않는다. 따라서 로컬 파서는 Codex 버전을 함께 기록하고 실제 데이터를 검증해야 한다.
 
@@ -321,6 +323,76 @@ turn 안의 도구 실행 workdir 수집
 ```
 
 도구 실행 위치를 읽는 작업은 각 기기 안에서만 수행하고, 원문 경로와 명령은 중앙 장부에 올리지 않는다.
+
+## Spike 4: Git 메타데이터 누락과 폴백 실험 (2026-08-26)
+
+모델 토큰을 사용하지 않도록 App Server의 `thread/start`와 `thread/inject_items`를 이용해 합성 thread를 만들었다. Codex CLI `0.150.0-alpha.8`에서 임시 Git 저장소의 remote 없음, `origin` 없음, worktree, submodule, monorepo 하위 폴더, remote 변경을 비교했다.
+
+### Git 구조별 결과
+
+| 조건 | Codex repository URL | branch·commit | 판별 결과 |
+|---|---|---|---|
+| 일반 저장소 + `origin` | `origin` URL | 있음 | 자동 분류 가능 |
+| remote 없음 | 없음 | 있음 | remote 기반 자동 통합 불가 |
+| `upstream` 하나, `origin` 없음 | 없음 | 있음 | Codex 로그만으로는 불가, 로컬 Git 조회로 가능 |
+| remote 둘, `origin` 없음 | 없음 | 있음 | 어느 remote가 정본인지 모호 |
+| Git worktree | 원본과 같은 `origin` | worktree branch·commit 있음 | 원본과 같은 프로젝트 |
+| submodule 내부 | submodule 자체 `origin` | 있음 | 상위 저장소와 별도 프로젝트 후보 |
+| monorepo 하위 폴더 | 루트와 같은 `origin` | 있음 | 기본적으로 저장소 하나의 프로젝트 |
+
+JSONL과 SQLite의 Git URL·branch·commit은 모든 합성 thread에서 일치했다. 모델 turn이 없었으므로 `tokens_used=0`이었고, 빈 thread가 아니라 합성 item이 영속화된 thread만 JSONL과 SQLite에 남았다.
+
+custom App Server client로 생성했지만 현재 thread source는 `vscode`로 기록됐다. 따라서 `appServer` source가 선택되는 정확한 조건은 여전히 확인되지 않았다.
+
+### origin이 없는 저장소
+
+Codex가 기록하는 repository URL은 사실상 `origin` 중심이다. `origin`이 없으면 remote가 하나뿐이어도 URL이 비어 있었다.
+
+수집기 폴백 후보:
+
+```text
+Codex가 기록한 origin URL 있음
+→ 해당 URL 사용
+
+origin URL 없음 + cwd가 아직 존재
+→ 로컬 Git remote가 정확히 하나면 그 URL 사용
+→ remote가 0개면 local-only 또는 수동 매핑
+→ remote가 2개 이상이면 ambiguous_remote
+
+cwd가 사라짐
+→ 기존 매핑이 없으면 미분류
+```
+
+branch와 commit hash만으로는 프로젝트 정체성을 안정적으로 판단하지 않는다. 서로 다른 저장소가 같은 commit을 가질 수 있고, 같은 저장소도 기기별로 branch와 commit이 달라질 수 있기 때문이다.
+
+### worktree·submodule·monorepo
+
+- worktree는 원본 저장소와 같은 remote를 사용하므로 같은 project ID로 합친다.
+- submodule 내부 작업은 submodule 자체 remote를 우선한다. 상위 저장소에 합산할지는 별도 roll-up 기능으로 다룬다.
+- monorepo 하위 폴더는 기본적으로 같은 remote이므로 하나의 프로젝트다. 하위 프로젝트 분리는 명시적 매핑이 있을 때만 한다.
+
+### remote 변경
+
+같은 저장소의 `origin` URL을 변경하기 전과 후에 만든 thread는 각각 당시 URL을 그대로 보존했다. 과거 이벤트가 자동으로 새 URL로 바뀌지 않으므로 다음 alias가 필요하다.
+
+```text
+old normalized remote project ID
+→ new normalized remote project ID
+```
+
+remote rename·조직 이전·프로토콜 변경을 발견해도 과거 장부를 덮어쓰지 않고 append-only alias 이벤트로 연결한다.
+
+### Spike 4 결론
+
+```text
+remote 선택: Codex origin → 로컬 unique remote → 수동 매핑 → 모호/미분류
+worktree: 같은 remote면 같은 프로젝트
+submodule: 자기 remote 우선
+monorepo: 기본은 저장소 하나
+remote 변경: alias 이벤트로 과거·현재 연결
+```
+
+`origin`이 없고 cwd도 사라진 작업은 사후 자동 복구가 불가능하다. 따라서 수집기는 증분 실행 시 로컬 Git 폴백 결과를 즉시 정제 이벤트에 보존해야 한다.
 
 ## 토큰 의미
 

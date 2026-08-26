@@ -35,6 +35,9 @@
 | D-022 | 프로젝트 귀속은 usage event가 속한 turn 단위로 결정하고 `수동 → 단일 활동 Git → 자기 Git → 계보 → 미분류` 순서를 사용한다. | Spike 3 근거 확보, 사용자 승인 대기 |
 | D-023 | foreground와 background `codex exec`를 별도 프로젝트 종류로 나누지 않는다. | Spike 3 근거 확보, 사용자 승인 대기 |
 | D-024 | 도구 실행 경로는 로컬에서만 Git project ID로 변환하고 원문 경로·명령은 중앙 장부에 저장하지 않는다. | Spike 3 근거 확보, 사용자 승인 대기 |
+| D-025 | origin이 없으면 로컬 remote가 정확히 하나일 때만 그 URL을 사용하고, 0개는 local-only, 2개 이상은 ambiguous로 둔다. | Spike 4 근거 확보, 사용자 승인 대기 |
+| D-026 | worktree는 같은 remote 프로젝트로 합치고, submodule은 자기 remote를 우선하며, monorepo는 기본적으로 저장소 하나로 본다. | Spike 4 근거 확보, 사용자 승인 대기 |
+| D-027 | remote 변경은 과거 이벤트 수정이 아니라 append-only project alias로 연결한다. | Spike 4 근거 확보, 사용자 승인 대기 |
 
 ## 보류된 결정
 
@@ -53,6 +56,8 @@
 | P-011 | compact의 불투명한 reported last를 별도 overhead 통계로 표시할지 |
 | P-012 | 한 turn이 여러 저장소를 사용하면 `ambiguous_multi_repo`로 둘지 |
 | P-013 | D-022의 turn별 활동 Git 우선순위를 최종 확정할지 |
+| P-014 | remote 없는 저장소를 여러 기기에서 연결할 project marker를 저장소 안에 둘지 |
+| P-015 | 정규화 remote에서 project ID를 만드는 비식별화 방식을 HMAC으로 확정할지 |
 
 ## 대체된 결정
 

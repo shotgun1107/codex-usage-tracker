@@ -79,4 +79,4 @@ flowchart LR
     D -. "다음 승인 지점" .-> E["Plan · PRD"]
 ```
 
-현재 구현은 시작하지 않았다. Spike 1에서 JSONL·SQLite 조인과 계보를, Spike 2에서 lifecycle 토큰 기준선을, Spike 3에서 CLI·백그라운드·오케스트레이션의 프로젝트 귀속 신호를 확인했다. 다음은 사용자 승인 후 Git 메타데이터 누락과 미분류 폴백을 검증한다.
+현재 구현은 시작하지 않았다. Spike 1~4에서 JSONL·SQLite 조인, lifecycle 토큰, 오케스트레이션 귀속, Git 누락 폴백을 확인했다. 다음은 제안된 결정을 사용자와 확정하고, 승인 후 Plan 단계의 PRD·스키마 명세로 이동한다.

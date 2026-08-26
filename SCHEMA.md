@@ -1,6 +1,6 @@
 # 데이터 스키마 초안
 
-상태: Spike 2 반영 초안
+상태: Spike 4 반영 초안
 스키마 버전: 미정
 
 이 문서는 원천 데이터와 GitHub 중앙 장부의 구조를 정의한다. 미확인 필드는 구현 전에 Spike로 검증한다.
@@ -88,7 +88,7 @@ SQLite → thread 목록, rollout 위치, 직접 spawn-edge, 최신 tokens_used 
   "parser_version": "TBD",
   "device_id": "uuid",
   "project_id": "opaque-id-or-null",
-  "project_resolution": "manual|activity_git|self_git|ancestor|root|descendant_consensus|ambiguous_multi_repo|unclassified",
+  "project_resolution": "manual|activity_git|self_origin|unique_remote|ancestor|root|descendant_consensus|local_mapping|ambiguous_remote|ambiguous_multi_repo|unclassified",
   "activity_repository_count": 0,
   "thread_id": "thread-id",
   "session_id": "session-id-or-null",
@@ -203,7 +203,8 @@ source_event_id = hash(turn_id + token_event_ordinal)
 ```text
 수동 지정
 → 현재 turn의 도구 실행 workdir들이 가리키는 단일 Git repository
-→ 현재 thread의 Git repository
+→ 현재 thread의 origin Git repository
+→ cwd의 로컬 Git remote가 정확히 하나일 때 해당 repository
 → 가장 가까운 분류된 부모 작업
 → session tree root의 프로젝트
 → Git 없는 오케스트레이터의 분류된 자식들이 정확히 하나의 repository만 가리킬 때 해당 repository
@@ -219,6 +220,22 @@ Spike 1에서 부모와 자식의 Git 저장소가 다른 edge 64개가 확인�
 - 활동 remote 0개: thread·계보 폴백 사용
 - 활동 remote 2개 이상: `ambiguous_multi_repo`, 자동 분할 금지
 - 자식 저장소 역추론: 자식들이 하나의 저장소에 합의할 때만 사용
+
+### Git remote 폴백
+
+```text
+session·turn origin URL 있음  → self_origin 또는 activity_git
+origin 없음 + local remote 1개 → unique_remote
+origin 없음 + local remote 0개 → local_mapping 또는 unclassified
+origin 없음 + local remote 2개 이상 → ambiguous_remote
+```
+
+- branch·commit은 조회 축과 진단 정보이며 project ID를 만들지 않는다.
+- worktree는 정규화 remote가 같으면 같은 project ID를 사용한다.
+- submodule은 자기 remote project ID를 사용한다.
+- monorepo 하위 경로는 기본적으로 루트 remote project ID를 사용한다.
+- remote 변경은 `mapping_event.kind=project_alias`로 과거 ID와 현재 ID를 연결한다.
+- cwd가 사라지기 전에 구한 local fallback 결과를 정제 이벤트에 보존한다.
 
 ## 멱등과 정정
 
