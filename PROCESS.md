@@ -75,8 +75,8 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["기반 정리"] --> B["Discover"] --> C["브리프 v0.4 승인"] --> D["Shape & Spike 진행 중"]
-    D -. "다음 승인 지점" .-> E["Plan · PRD"]
+    A["기반 정리"] --> B["Discover"] --> C["브리프 v0.4 승인"] --> D["Shape & Spike 완료"] --> E["Plan · PRD 진행 중"]
+    E -. "다음 승인 지점" .-> F["Design · C4 · ADR"]
 ```
 
-현재 구현은 시작하지 않았다. Spike 1~4에서 JSONL·SQLite 조인, lifecycle 토큰, 오케스트레이션 귀속, Git 누락 폴백을 확인했다. 다음은 제안된 결정을 사용자와 확정하고, 승인 후 Plan 단계의 PRD·스키마 명세로 이동한다.
+현재 구현은 시작하지 않았다. Spike 1~4와 설계 결정을 확정했고, `PRD.md`와 스키마 v1 명세를 작성하는 Plan 단계다. 다음은 기획·명세 검토와 사용자 승인 후 Design 단계로 이동한다.

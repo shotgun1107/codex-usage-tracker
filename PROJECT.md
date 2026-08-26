@@ -109,3 +109,4 @@ flowchart LR
 - [결정 기록](DECISIONS.md)
 - [미확인 사항](OPEN_QUESTIONS.md)
 - [데이터 스키마](SCHEMA.md)
+- [v1 제품 요구사항](PRD.md)

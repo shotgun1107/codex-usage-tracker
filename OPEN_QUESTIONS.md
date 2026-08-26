@@ -89,20 +89,20 @@
 - 제안: 자동 분할하지 않고 `ambiguous_multi_repo`로 저장한 뒤 수동 지정한다.
 - 완료 기준: 실제 다중 저장소 turn을 만들고 활동 workdir 집합과 토큰 이벤트 순서를 비교한다.
 
-## 설계 결정 대기
+## 해결된 설계 결정
 
-다음은 로그 검증이 아니라 사용자와 프로젝트가 정할 사항이다.
+다음 항목은 2026-08-26 사용자 승인으로 확정됐다.
 
-- 회사 데이터의 GitHub 저장 정책
-- remote·branch·경로의 비식별화 방식
-- 자동 수집 주기와 실행 방식
-- v1 기본 조회 인터페이스
-- 멱등 키 구성
-- 이벤트 정정과 supersede 방식
-- 부모 상속과 자식 Git 정보가 충돌할 때의 우선순위
-- 한 turn이 여러 저장소를 사용할 때의 처리 방식
-- monorepo 분류 단위
-- 장부 보존·롤업 정책
+- 회사 정책이 허용할 때 정제 통계만 비공개 장부에 저장
+- 공유 비밀키 HMAC 비식별화
+- v1 수동 `collect → sync → report`
+- CLI 표와 Markdown 보고서
+- `turn_id + token ordinal` 멱등 키
+- append-only revision과 supersede 정정
+- turn 활동 Git이 부모 상속보다 우선
+- 다중 저장소 turn은 ambiguous 처리
+- monorepo는 기본 저장소 하나
+- v1 장부 이벤트 삭제·롤업 없음
 
 결정 상태는 [DECISIONS.md](DECISIONS.md)에서 관리한다.
 
@@ -119,4 +119,5 @@
 - lifecycle 토큰 중복 규칙: 확인, compact overhead 의미만 보류
 - CLI·백그라운드·오케스트레이션 귀속: 확인
 - Git 누락·worktree·submodule·monorepo 폴백: 확인
-- 다음 단계: 제안된 결정을 사용자와 확정한 뒤 PRD·스키마 명세 단계로 이동
+- 결정 확정: 완료
+- 현재 단계: PRD·스키마 명세 작성 및 검토

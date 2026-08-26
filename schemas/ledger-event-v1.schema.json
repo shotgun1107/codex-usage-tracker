@@ -1,0 +1,419 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/shotgun1107/codex-usage-tracker/schemas/ledger-event-v1.schema.json",
+  "title": "Codex Usage Tracker Ledger Event v1",
+  "oneOf": [
+    {
+      "$ref": "#/$defs/usageEvent"
+    },
+    {
+      "$ref": "#/$defs/mappingEvent"
+    },
+    {
+      "$ref": "#/$defs/quotaEvent"
+    }
+  ],
+  "$defs": {
+    "opaqueId": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 256
+    },
+    "nullableOpaqueId": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/opaqueId"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "nullableToken": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "tokenCounts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_tokens",
+        "cached_input_tokens",
+        "cache_write_input_tokens",
+        "output_tokens",
+        "reasoning_output_tokens",
+        "total_tokens"
+      ],
+      "properties": {
+        "input_tokens": {
+          "$ref": "#/$defs/nullableToken"
+        },
+        "cached_input_tokens": {
+          "$ref": "#/$defs/nullableToken"
+        },
+        "cache_write_input_tokens": {
+          "$ref": "#/$defs/nullableToken"
+        },
+        "output_tokens": {
+          "$ref": "#/$defs/nullableToken"
+        },
+        "reasoning_output_tokens": {
+          "$ref": "#/$defs/nullableToken"
+        },
+        "total_tokens": {
+          "$ref": "#/$defs/nullableToken"
+        }
+      }
+    },
+    "revisionFields": {
+      "type": "object",
+      "required": [
+        "event_id",
+        "revision",
+        "supersedes"
+      ],
+      "properties": {
+        "event_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "supersedes": {
+          "$ref": "#/$defs/nullableOpaqueId"
+        }
+      }
+    },
+    "usageEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_type",
+        "event_id",
+        "source_event_id",
+        "revision",
+        "supersedes",
+        "voided",
+        "parser_version",
+        "device_id",
+        "project_id",
+        "project_resolution",
+        "activity_repository_count",
+        "thread_key",
+        "root_thread_key",
+        "parent_thread_key",
+        "forked_from_thread_key",
+        "turn_key",
+        "token_event_ordinal",
+        "operation",
+        "occurred_at",
+        "model",
+        "reasoning_effort",
+        "source_kind",
+        "cli_version",
+        "cumulative",
+        "delta",
+        "reported_last",
+        "flags"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_type": {
+          "const": "usage_checkpoint"
+        },
+        "event_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "source_event_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "supersedes": {
+          "$ref": "#/$defs/nullableOpaqueId"
+        },
+        "voided": {
+          "type": "boolean"
+        },
+        "parser_version": {
+          "type": "string",
+          "minLength": 1
+        },
+        "device_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "project_id": {
+          "$ref": "#/$defs/nullableOpaqueId"
+        },
+        "project_resolution": {
+          "enum": [
+            "manual",
+            "activity_git",
+            "self_origin",
+            "unique_remote",
+            "ancestor",
+            "root",
+            "descendant_consensus",
+            "local_mapping",
+            "ambiguous_remote",
+            "ambiguous_multi_repo",
+            "unclassified"
+          ]
+        },
+        "activity_repository_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "thread_key": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "root_thread_key": {
+          "$ref": "#/$defs/nullableOpaqueId"
+        },
+        "parent_thread_key": {
+          "$ref": "#/$defs/nullableOpaqueId"
+        },
+        "forked_from_thread_key": {
+          "$ref": "#/$defs/nullableOpaqueId"
+        },
+        "turn_key": {
+          "$ref": "#/$defs/nullableOpaqueId"
+        },
+        "token_event_ordinal": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "operation": {
+          "enum": [
+            "turn",
+            "compact",
+            "unknown"
+          ]
+        },
+        "occurred_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "model": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "reasoning_effort": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "source_kind": {
+          "enum": [
+            "cli",
+            "vscode",
+            "exec",
+            "appServer",
+            "subAgent",
+            "subAgentReview",
+            "subAgentCompact",
+            "subAgentThreadSpawn",
+            "subAgentOther",
+            "unknown"
+          ]
+        },
+        "cli_version": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "cumulative": {
+          "$ref": "#/$defs/tokenCounts"
+        },
+        "delta": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/tokenCounts"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reported_last": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/tokenCounts"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "flags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "mappingEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_type",
+        "event_id",
+        "revision",
+        "supersedes",
+        "device_id",
+        "occurred_at",
+        "kind",
+        "subject_type",
+        "subject_id",
+        "target_project_id",
+        "display_value"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_type": {
+          "const": "mapping"
+        },
+        "event_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "supersedes": {
+          "$ref": "#/$defs/nullableOpaqueId"
+        },
+        "device_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "occurred_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "kind": {
+          "enum": [
+            "manual_assignment",
+            "project_alias",
+            "local_repo_link",
+            "project_name",
+            "device_name"
+          ]
+        },
+        "subject_type": {
+          "enum": [
+            "project",
+            "thread",
+            "turn",
+            "local_repo",
+            "device"
+          ]
+        },
+        "subject_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "target_project_id": {
+          "$ref": "#/$defs/nullableOpaqueId"
+        },
+        "display_value": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 200
+        }
+      }
+    },
+    "quotaEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "event_type",
+        "event_id",
+        "device_id",
+        "occurred_at",
+        "scope_key",
+        "window_minutes",
+        "used_percent",
+        "remaining_percent",
+        "reset_at"
+      ],
+      "properties": {
+        "schema_version": {
+          "const": 1
+        },
+        "event_type": {
+          "const": "quota_snapshot"
+        },
+        "event_id": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "device_id": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "occurred_at": {
+          "$ref": "#/$defs/timestamp"
+        },
+        "scope_key": {
+          "$ref": "#/$defs/nullableOpaqueId"
+        },
+        "window_minutes": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1
+        },
+        "used_percent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "remaining_percent": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 100
+        },
+        "reset_at": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/timestamp"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

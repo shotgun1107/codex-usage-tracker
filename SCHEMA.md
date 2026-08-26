@@ -1,111 +1,124 @@
-# 데이터 스키마 초안
+# 중앙 장부 스키마 v1
 
-상태: Spike 4 반영 초안
-스키마 버전: 미정
+상태: Plan 단계 명세 초안
 
-이 문서는 원천 데이터와 GitHub 중앙 장부의 구조를 정의한다. 미확인 필드는 구현 전에 Spike로 검증한다.
+스키마 버전: `1`
 
-## 데이터 계층
+기계 검증 파일: [`schemas/ledger-event-v1.schema.json`](schemas/ledger-event-v1.schema.json)
+
+## 목적
+
+Codex 원본 JSONL과 SQLite에서 대화 내용을 제거한 사용량 이벤트를 만들고, 여러 기기가 비공개 Git 장부에서 충돌 없이 공유할 수 있도록 정의한다.
 
 ```text
-Codex JSONL + Codex SQLite
-        ↓ 수집·정제
-기기별 append-only 이벤트 장부
-        ↓ 집계
-로컬 SQLite 캐시·CLI·Markdown·UI
+Codex JSONL + SQLite
+        ↓ 로컬 수집·HMAC 비식별화
+기기별 append-only JSONL 장부
+        ↓ replay
+로컬 SQLite 조회 DB
+        ↓
+CLI 표·Markdown 보고서
 ```
 
-## 원천 데이터
+## 원천 데이터 역할
 
 ### JSONL rollout
 
-현재 필요한 레코드:
-
-- `session_meta.id`: SQLite와 조인하는 논리 thread ID
-- `session_meta.session_id`: 현재 session tree의 root thread ID
-- `session_meta.forked_from_id`: fork의 직접 원본 thread ID
-- `session_meta`: source, cwd, Codex 버전, Git 정보
-- `turn_context`: turn, cwd, model, reasoning effort
+- `session_meta.id`: thread 원본 ID
+- `session_meta.session_id`: 계보 root 후보
+- `session_meta.forked_from_id`: fork 원본 thread
+- `session_meta.source`, `cwd`, `cli_version`, `git`
+- `turn_context`: turn ID, cwd, model, reasoning effort
 - `event_msg.token_count`: 누적 토큰 체크포인트
-- lifecycle·collaboration 레코드: fork·compact·부모 관계 보조 정보
-
-현재 Git 정보:
-
-```text
-git.repository_url
-git.branch
-git.commit_hash
-```
+- `task_started`, `task_complete`, compact lifecycle
+- 도구 호출의 실행 `workdir`
 
 ### SQLite state
 
-현재 필요한 테이블 후보:
+- `threads`: thread 인덱스, rollout 위치, 최신 토큰 요약
+- `thread_spawn_edges`: 직접 부모·자식 관계
+
+검증된 조인:
 
 ```text
-threads
-thread_spawn_edges(parent_thread_id, child_thread_id, status)
-projects
-project_roots
+SQLite threads.id
+= rollout 파일 UUID
+= 첫 session_meta.id
 ```
 
-SQLite 내부 스키마는 Codex 버전에 따라 변할 수 있으므로 직접 장부로 공유하지 않고 읽기 어댑터를 둔다.
+SQLite 파일 자체는 장부에 공유하지 않는다.
 
-### 검증된 조인 규칙
+## 비식별화
+
+모든 기기는 같은 256-bit 이상의 공유 비밀키 `K`를 사용한다. 키는 Git에 저장하지 않는다.
 
 ```text
-thread_id
-= SQLite threads.id
-= rollout 파일명의 UUID
-= JSONL session_meta.id
-
-root_session_id
-= JSONL session_meta.session_id
-
-parent_thread_id
-= SQLite thread_spawn_edges.parent_thread_id
+project_id       = HMAC-SHA-256(K, "project:v1:" + normalized_remote)
+thread_key       = HMAC-SHA-256(K, "thread:v1:" + raw_thread_id)
+turn_key         = HMAC-SHA-256(K, "turn:v1:" + raw_turn_id)
+source_event_id  = HMAC-SHA-256(K, "usage:v1:" + raw_turn_id + ":" + ordinal)
 ```
 
-Spike 1에서 631개 thread가 모두 위 규칙으로 연결됐다. `session_id`는 여러 자식이 공유하므로 thread의 고유 키로 사용하지 않는다.
+출력은 타입 접두사와 base64url 또는 hex digest를 사용한다. 예: `prj_h1_...`, `thr_h1_...`.
 
-현재 소스 역할:
+중앙 장부에 저장하지 않는 값:
 
-```text
-JSONL  → 세부 토큰 체크포인트, turn별 모델·effort, Git 정보
-SQLite → thread 목록, rollout 위치, 직접 spawn-edge, 최신 tokens_used 요약
-```
+- 프롬프트·응답
+- 코드·명령·명령 출력
+- 인증정보와 HMAC 키
+- raw thread·turn ID
+- 전체 로컬 경로
+- raw remote URL·branch·commit
+- 검토되지 않은 프로젝트명
 
-## 중앙 장부 레코드
+원문 경로와 remote는 로컬 판별 중에만 사용한다.
 
-### usage_event
+## Git remote 정규화
 
-각 줄은 대화 내용이 제거된 토큰 체크포인트 하나다.
+1. HTTPS, `ssh://`, scp형 SSH 주소를 `host/path` 형태로 변환한다.
+2. 사용자정보·query·fragment와 기본 포트를 제거한다.
+3. host를 소문자로 바꾼다.
+4. 끝의 `/`와 `.git`을 제거한다.
+5. `github.com`의 owner/repository 경로는 소문자로 바꾼다.
+6. 다른 host의 path 대소문자는 보존한다.
+7. 로컬 파일 remote는 cross-device project ID로 자동 사용하지 않는다.
+
+`origin`이 없으면 로컬 remote가 정확히 하나일 때만 그 URL을 사용한다. 두 개 이상이면 `ambiguous_remote`, 하나도 없으면 local mapping 또는 `unclassified`다.
+
+## usage event
+
+장부 한 줄은 token checkpoint 하나다.
 
 ```json
 {
-  "schema_version": "draft",
-  "source_event_id": "TBD",
+  "schema_version": 1,
+  "event_type": "usage_checkpoint",
+  "event_id": "evt_h1_opaque",
+  "source_event_id": "src_h1_opaque",
   "revision": 1,
-  "parser_version": "TBD",
-  "device_id": "uuid",
-  "project_id": "opaque-id-or-null",
-  "project_resolution": "manual|activity_git|self_origin|unique_remote|ancestor|root|descendant_consensus|local_mapping|ambiguous_remote|ambiguous_multi_repo|unclassified",
-  "activity_repository_count": 0,
-  "thread_id": "thread-id",
-  "session_id": "session-id-or-null",
-  "root_session_id": "root-id-or-null",
-  "parent_thread_id": "parent-id-or-null",
-  "forked_from_thread_id": "fork-source-id-or-null",
-  "turn_id": "turn-id-or-null",
+  "supersedes": null,
+  "voided": false,
+  "parser_version": "0.1.0",
+  "device_id": "00000000-0000-4000-8000-000000000001",
+  "project_id": "prj_h1_opaque-or-null",
+  "project_resolution": "activity_git",
+  "activity_repository_count": 1,
+  "thread_key": "thr_h1_opaque",
+  "root_thread_key": "thr_h1_opaque-or-null",
+  "parent_thread_key": "thr_h1_opaque-or-null",
+  "forked_from_thread_key": "thr_h1_opaque-or-null",
+  "turn_key": "turn_h1_opaque-or-null",
   "token_event_ordinal": 0,
-  "operation": "turn|compact|unknown",
-  "occurred_at": "UTC timestamp",
-  "model": "model-id-or-null",
-  "reasoning_effort": "effort-or-null",
-  "cli_version": "version-or-null",
+  "operation": "turn",
+  "occurred_at": "2026-08-26T05:00:00Z",
+  "model": "gpt-model-id-or-null",
+  "reasoning_effort": "low-or-null",
+  "source_kind": "vscode",
+  "cli_version": "0.150.0-alpha.8",
   "cumulative": {
     "input_tokens": 0,
     "cached_input_tokens": 0,
-    "cache_write_input_tokens": 0,
+    "cache_write_input_tokens": null,
     "output_tokens": 0,
     "reasoning_output_tokens": 0,
     "total_tokens": 0
@@ -113,7 +126,7 @@ SQLite → thread 목록, rollout 위치, 직접 spawn-edge, 최신 tokens_used 
   "delta": {
     "input_tokens": 0,
     "cached_input_tokens": 0,
-    "cache_write_input_tokens": 0,
+    "cache_write_input_tokens": null,
     "output_tokens": 0,
     "reasoning_output_tokens": 0,
     "total_tokens": 0
@@ -121,141 +134,192 @@ SQLite → thread 목록, rollout 위치, 직접 spawn-edge, 최신 tokens_used 
   "reported_last": {
     "input_tokens": 0,
     "cached_input_tokens": 0,
-    "cache_write_input_tokens": 0,
+    "cache_write_input_tokens": null,
     "output_tokens": 0,
     "reasoning_output_tokens": 0,
     "total_tokens": 0
   },
-  "source": {
-    "kind": "vscode|cli|exec|appServer|subAgent|subAgentReview|subAgentCompact|subAgentThreadSpawn|subAgentOther|unknown",
-    "rollout_fingerprint": "opaque-id",
-    "record_position": "opaque-cursor"
-  }
+  "flags": []
 }
 ```
 
-`null`은 정보가 없음을 의미한다. 필드가 없는 구버전과 숫자 0을 구분해야 한다.
+### 필드 규칙
 
-`cache_write_input_tokens`는 현재 로그 일부에서 누락되므로 필수 숫자가 아니라 nullable 버전별 필드로 취급한다.
+- `event_id`: `source_event_id + revision + canonical payload`의 HMAC
+- `source_event_id`: 같은 원천 checkpoint의 logical key
+- `revision`: 1부터 증가
+- `supersedes`: 직전 revision의 `event_id`
+- `voided=true`: 기존 logical event를 합계에서 제외하는 정정
+- `null`: 해당 Codex 버전에서 정보가 없음을 의미하며 숫자 0과 다르다.
+- `occurred_at`: UTC 저장, 보고서에서 기본 Asia/Seoul 변환
+- `source_kind`: `cli|vscode|exec|appServer|subAgent|subAgentReview|subAgentCompact|subAgentThreadSpawn|subAgentOther|unknown`
+- `operation`: `turn|compact|unknown`
 
-`reported_last`는 Codex가 기록한 `last_token_usage`의 원형이다. 일반 turn에서는 delta 검증에 사용하고, compact처럼 누적 차이와 의미가 다른 경우에도 삭제하지 않고 보존한다.
+`project_resolution` 값:
 
-### mapping_event
+```text
+manual
+activity_git
+self_origin
+unique_remote
+ancestor
+root
+descendant_consensus
+local_mapping
+ambiguous_remote
+ambiguous_multi_repo
+unclassified
+```
 
-프로젝트 별칭, 수동 연결, 저장소 이전, 기기 표시 이름도 append-only 이벤트로 기록한다.
+## token 계산
+
+```text
+delta = 현재 cumulative - 같은 counter 구간의 이전 cumulative
+```
+
+- 첫 일반 thread checkpoint: cumulative 전체를 첫 delta로 사용
+- 동일 cumulative 반복: delta 0
+- resume: 같은 counter를 계속 사용
+- fork: 복사된 동일 `turn_key + ordinal` 이벤트를 중복 제거하고 fork 이후 checkpoint만 계산
+- fork의 복사 prefix는 부모 원본 thread key로 귀속해 같은 logical event의 내용도 일치시킨다.
+- compact: cumulative가 같으면 delta 0, 불투명한 `reported_last`는 보존하지만 합계 제외
+- negative delta: `counter_regression` flag, delta를 null로 두고 합계 제외 후 진단
+- `input + output = total`이 아니면 `token_total_mismatch` flag
+- cached input은 input의 부분집합이고 reasoning output은 output의 부분집합이므로 total에 다시 더하지 않음
+
+현재 버전에서 token checkpoint는 진행 중인 `task_started.turn_id`에 연결하고 turn 안에서 0부터 ordinal을 부여한다.
+
+turn ID가 없는 구버전은 다음 fallback을 사용한다.
+
+```text
+HMAC(K, raw_thread_id + record_kind + stable_record_ordinal + payload_digest)
+```
+
+이 경우 `weak_dedupe_key` flag를 추가하고 fork 복사 이력은 별도 prefix 비교로 제외한다.
+
+## 프로젝트 귀속
+
+각 usage event에 다음 순서를 적용한다.
+
+```text
+manual assignment
+→ turn 도구 workdir의 normalized remote가 정확히 하나
+→ thread session_meta의 origin
+→ cwd의 유일한 non-origin remote
+→ 가장 가까운 분류된 부모
+→ root 프로젝트
+→ 자식 project ID 단일 합의
+→ local mapping
+→ ambiguous 또는 unclassified
+```
+
+- 부모와 자식 Git이 다르면 자식의 활동·자기 Git이 우선한다.
+- worktree는 같은 normalized remote면 같은 project ID다.
+- submodule은 자기 remote를 우선한다.
+- monorepo는 기본적으로 remote 하나의 project ID를 사용한다.
+- 한 turn의 활동 remote가 둘 이상이면 `ambiguous_multi_repo`다.
+- remote-less 저장소의 다기기 통합은 manual mapping으로 같은 project ID를 지정한다.
+
+## mapping event
 
 ```json
 {
-  "schema_version": "draft",
-  "mapping_event_id": "TBD",
-  "device_id": "uuid",
-  "occurred_at": "UTC timestamp",
-  "kind": "project_alias|manual_assignment|device_name|supersede",
-  "subject_id": "opaque-id",
-  "value": "privacy-reviewed-value",
-  "supersedes": "older-event-id-or-null"
+  "schema_version": 1,
+  "event_type": "mapping",
+  "event_id": "map_h1_opaque",
+  "revision": 1,
+  "supersedes": null,
+  "device_id": "00000000-0000-4000-8000-000000000001",
+  "occurred_at": "2026-08-26T05:00:00Z",
+  "kind": "manual_assignment",
+  "subject_type": "thread",
+  "subject_id": "thr_h1_opaque",
+  "target_project_id": "prj_h1_opaque",
+  "display_value": null
 }
 ```
 
-공용 파일을 직접 수정하지 않고 모든 기기의 매핑 이벤트를 읽어 최종 상태를 계산한다.
+`kind`:
 
-## GitHub 저장 구조 후보
+- `manual_assignment`: thread 또는 turn을 프로젝트에 연결
+- `project_alias`: 이전 project ID를 현재 project ID에 연결
+- `local_repo_link`: local-only repository key를 project ID에 연결
+- `project_name`: 사용자가 승인한 프로젝트 표시명
+- `device_name`: 사용자가 선택한 기기 표시명
+
+`project_alias`는 방향 그래프로 적용한다. cycle이 생기면 장부 replay를 중단하지 않고 해당 alias를 무효 처리하고 진단한다.
+
+## quota snapshot
+
+부가 기능이며 Codex가 직접 제공한 값만 기록한다.
+
+```json
+{
+  "schema_version": 1,
+  "event_type": "quota_snapshot",
+  "event_id": "quota_h1_opaque",
+  "device_id": "00000000-0000-4000-8000-000000000001",
+  "occurred_at": "2026-08-26T05:00:00Z",
+  "scope_key": "account_h1_opaque-or-null",
+  "window_minutes": 300,
+  "used_percent": 14.0,
+  "remaining_percent": 86.0,
+  "reset_at": "2026-08-26T10:20:00Z"
+}
+```
+
+quota snapshot은 프로젝트 token 합계 계산에 사용하지 않는다.
+
+## Git 장부 구조
 
 ```text
 ledger/
 └─ devices/
    └─ <device-uuid>/
       ├─ usage/<year>/<month>/<day>.jsonl
-      └─ mappings/<year>/<month>.jsonl
+      ├─ mappings/<year>/<month>.jsonl
+      └─ quota/<year>/<month>/<day>.jsonl
 ```
 
-- 기기 하나는 자신의 디렉터리만 쓴다.
-- 한 파일 안에는 일일 합계가 아니라 여러 이벤트가 들어간다.
-- 조회용 SQLite는 Git에 올리지 않고 장부에서 재생성한다.
+- 기기는 자기 디렉터리만 쓴다.
+- 파일 날짜는 이벤트 UTC 날짜다.
+- 한 줄은 완전한 JSON object이며 부분 line은 무시하고 다음 수집에서 재시도한다.
+- 장부 파일은 append-only다.
+- v1에서는 삭제·압축·롤업하지 않는다.
+- 정렬 순서는 신뢰하지 않고 replay 시 `occurred_at`, logical key, revision을 사용한다.
 
-## 계산 규칙 초안
+## 로컬 상태 DB
+
+Git에 올리지 않는 SQLite 캐시의 최소 테이블:
 
 ```text
-증가량 = 현재 누적 체크포인트 - 같은 카운터 구간의 이전 체크포인트
+source_cursors
+usage_events
+mapping_events
+project_aliases
+quota_snapshots
+parser_issues
+sync_runs
 ```
 
-- 동일 누적값 반복: 증가량 0
-- 계산한 입력 + 출력과 total이 다르면 경고
-- `last_token_usage`는 증가량 검증에 사용
-- 신규 일반 thread의 첫 누적값: 첫 사용량으로 처리
-- resume: 이전 체크포인트를 이어서 delta 계산
-- token_count: 가장 가까운 미완료 `task_started.turn_id`에 연결
-- fork: 복사된 부모 turn의 체크포인트는 중복 사용량으로 제외
-- compact: 누적값이 같으면 일반 delta 0, 불투명한 `reported_last`는 별도 보존
-- 누적값 감소와 compact overhead 합산은 추가 검증·결정 필요
-- 날짜 귀속은 이벤트 종료 시각을 기준으로 하는 근사임을 표시
+`source_cursors`는 rollout fingerprint, 마지막 byte offset, 마지막 완전 line digest를 저장한다. 원천 파일이 바뀌면 안전하게 앞 구간을 재검사하되 `source_event_id`로 중복을 막는다.
 
-fork 통제 실험에서 복사된 부모 작업은 원본과 같은 `turn_id`와 같은 token payload 순서를 유지했다. 따라서 현재 멱등 키 후보는 다음과 같다.
+## correction과 replay
 
-```text
-source_event_id = hash(turn_id + token_event_ordinal)
-```
+1. 모든 장부 line을 읽는다.
+2. schema version을 검사한다.
+3. 같은 logical key에서 가장 높은 유효 revision을 고른다.
+4. `voided=true`를 제외한다.
+5. manual mapping과 project alias를 적용한다.
+6. usage delta를 로컬 SQLite에 적재한다.
+7. 날짜·프로젝트·모델·기기 집계를 생성한다.
 
-이 규칙은 fork의 복사 이력을 제거할 수 있지만, 여러 기기와 구버전 로그에서도 turn ID가 안정적으로 유지되는지 확인한 뒤 확정한다.
+동일 revision의 내용이 서로 다르면 `revision_conflict`로 기록하고 합계를 확정하지 않는다.
 
-## 프로젝트 귀속 규칙 제안
+## 스키마 검증 조건
 
-```text
-수동 지정
-→ 현재 turn의 도구 실행 workdir들이 가리키는 단일 Git repository
-→ 현재 thread의 origin Git repository
-→ cwd의 로컬 Git remote가 정확히 하나일 때 해당 repository
-→ 가장 가까운 분류된 부모 작업
-→ session tree root의 프로젝트
-→ Git 없는 오케스트레이터의 분류된 자식들이 정확히 하나의 repository만 가리킬 때 해당 repository
-→ 로컬 매핑
-→ 미분류 또는 ambiguous_multi_repo
-```
-
-Spike 1에서 부모와 자식의 Git 저장소가 다른 edge 64개가 확인됐다. Spike 3에서는 session Git 정보가 없는 자식도 실제 도구 호출 `workdir`에서 프로젝트를 사용했다. 따라서 프로젝트 판별은 thread 기본값과 turn별 실제 활동을 분리해야 한다.
-
-수집기는 도구 호출의 명령 원문을 중앙 장부에 저장하지 않는다. 로컬에서 `workdir → Git remote → project_id`로 변환한 뒤 `project_id`, `project_resolution`, `activity_repository_count`만 기록한다.
-
-- 활동 remote 1개: `activity_git`
-- 활동 remote 0개: thread·계보 폴백 사용
-- 활동 remote 2개 이상: `ambiguous_multi_repo`, 자동 분할 금지
-- 자식 저장소 역추론: 자식들이 하나의 저장소에 합의할 때만 사용
-
-### Git remote 폴백
-
-```text
-session·turn origin URL 있음  → self_origin 또는 activity_git
-origin 없음 + local remote 1개 → unique_remote
-origin 없음 + local remote 0개 → local_mapping 또는 unclassified
-origin 없음 + local remote 2개 이상 → ambiguous_remote
-```
-
-- branch·commit은 조회 축과 진단 정보이며 project ID를 만들지 않는다.
-- worktree는 정규화 remote가 같으면 같은 project ID를 사용한다.
-- submodule은 자기 remote project ID를 사용한다.
-- monorepo 하위 경로는 기본적으로 루트 remote project ID를 사용한다.
-- remote 변경은 `mapping_event.kind=project_alias`로 과거 ID와 현재 ID를 연결한다.
-- cwd가 사라지기 전에 구한 local fallback 결과를 정제 이벤트에 보존한다.
-
-## 멱등과 정정
-
-미확정 사항:
-
-- `source_event_id` 구성
-- 원천 파일 재작성 시 안정적인 위치 식별
-- parser_version 변경 후 재수집 정책
-- 기존 이벤트를 무효화하거나 대체하는 `supersedes` 규칙
-
-상세 결정은 [DECISIONS.md](DECISIONS.md), 검증 계획은 [OPEN_QUESTIONS.md](OPEN_QUESTIONS.md)를 따른다.
-
-## 개인정보 경계
-
-GitHub 장부에 저장하지 않는 값:
-
-- 프롬프트와 응답
-- 코드와 명령 출력
-- 인증 정보
-- 전체 로컬 경로 원문
-- 검토되지 않은 remote·branch·프로젝트명
-
-remote·branch·경로는 원문, HMAC, 별도 ID 중 어떤 형태로 저장할지 결정한 뒤 스키마를 확정한다.
+- JSON Schema로 모든 event line을 검증한다.
+- 금지 필드와 경로·remote URL 패턴을 장부 커밋 전에 검사한다.
+- 합성 fixture로 신규·resume·fork·compact·worktree·submodule·monorepo·remote 변경을 재현한다.
+- 장부를 세 번 replay해도 결과가 동일해야 한다.
+- 다른 기기 파일 순서로 읽어도 결과가 동일해야 한다.
