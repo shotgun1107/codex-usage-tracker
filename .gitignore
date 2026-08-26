@@ -14,5 +14,5 @@ htmlcov/
 *.sqlite-wal
 .env
 .codex-usage/
-ledger/
-reports/
+/ledger/
+/reports/

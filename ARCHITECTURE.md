@@ -339,14 +339,14 @@ tests/
 1. ✅ domain HMAC·remote normalization
 2. ✅ JSONL token parser와 lifecycle delta
 3. ✅ SQLite lineage adapter와 turn별 project attribution
-4. ⏳ local SQLite outbox·read model
-5. ⏳ ledger writer·replay·JSON Schema validation
+4. ✅ local SQLite outbox·read model
+5. ⏳ ledger writer·JSON Schema validation
 6. ⏳ CLI collect·doctor
 7. ⏳ report table·Markdown
 8. ⏳ Git sync
 9. ⏳ quota 보조 수집
 
-다음 구현 단위는 4번인 local SQLite outbox·read model이다.
+다음 구현 단위는 5번인 ledger JSONL writer·reader와 JSON Schema validation이다. revision·alias·manual mapping replay core는 4번과 함께 구현됐다.
 
 ## ADR 목록
 

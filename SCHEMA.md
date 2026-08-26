@@ -306,19 +306,30 @@ ledger/
 
 ## 로컬 상태 DB
 
-Git에 올리지 않는 SQLite 캐시의 최소 테이블:
+Git에 올리지 않는 SQLite는 operational state와 재생성 가능한 read model을 같은 파일의 별도 테이블로 관리한다.
 
 ```text
+# operational state
 source_cursors
+outbox_events
+parser_issues
+sync_runs
+
+# rebuildable read model
 usage_events
 mapping_events
 project_aliases
 quota_snapshots
-parser_issues
-sync_runs
+read_model_state
 ```
 
 `source_cursors`는 rollout fingerprint, 마지막 byte offset, 마지막 완전 line digest를 저장한다. 원천 파일이 바뀌면 안전하게 앞 구간을 재검사하되 `source_event_id`로 중복을 막는다.
+
+`source_cursors` 갱신과 sanitized event의 `outbox_events` 추가는 하나의 `BEGIN IMMEDIATE` transaction으로 처리한다. 같은 `event_id`와 같은 payload의 재수집은 멱등 처리하고, 같은 ID의 다른 payload는 전체 transaction을 rollback한다.
+
+`outbox_events`는 ledger 파일에 완전한 line이 기록되고 flush된 뒤에만 `flushed_at`과 상대 ledger 경로를 기록한다. 조회 DB를 재생성해도 cursor·outbox·parser issue는 삭제하지 않는다.
+
+`read_model_state.generation`은 성공한 원자적 재생성마다 증가한다. 재생성 중 validation·constraint 오류가 발생하면 usage·mapping·alias·quota 테이블 전체를 직전 generation으로 rollback한다.
 
 ## correction과 replay
 
@@ -331,6 +342,8 @@ sync_runs
 7. 날짜·프로젝트·모델·기기 집계를 생성한다.
 
 동일 revision의 내용이 서로 다르면 `revision_conflict`로 기록하고 합계를 확정하지 않는다.
+
+replay는 입력 파일과 line 순서를 신뢰하지 않는다. 같은 장부 집합은 순서와 재실행 횟수에 관계없이 동일한 effective event를 만들어야 한다. HMAC `key_id`가 둘 이상이거나 로컬 키와 다르면 replay를 시작하지 않는다.
 
 ## 스키마 검증 조건
 

@@ -433,6 +433,22 @@ remote 변경: alias 이벤트로 과거·현재 연결
 
 이 검증은 프로젝트 밖 오케스트레이터와 다수 자식 thread를 실제로 합산할 수 있음을 보여준다. 동시에 오래된 로그나 Git 근거가 없는 작업 약 18.5%는 수동 매핑 없이는 정확히 복구할 수 없으므로, 자동 추측하지 않는 현재 정책을 유지한다.
 
+## Build 검증: local outbox와 read model (2026-08-27)
+
+합성 ledger fixture로 operational state와 rebuildable read model의 장애 복구 규칙을 검증했다.
+
+- source cursor와 여러 outbox event를 한 transaction으로 저장
+- 같은 event 재수집은 0건 추가, 같은 ID의 다른 payload는 cursor까지 rollback
+- 같은 fingerprint에서 cursor offset 감소 차단, 원천 fingerprint 변경 시 재검사 허용
+- ledger 상대 경로만 flush 결과로 허용하고 Windows·POSIX 절대경로와 상위 경로 차단
+- event 입력 순서를 뒤집어도 latest revision·void·manual mapping·alias 결과 동일
+- revision gap·잘못된 supersedes·서로 다른 key ID 혼합은 fail-closed
+- alias cycle은 관련 alias만 제외하고 나머지 usage replay 지속
+- read model 재생성 실패 시 직전 generation과 집계 유지
+- read model을 재생성해도 source cursor와 pending outbox 유지
+
+구현 과정에서 Python SQLite context manager가 connection 자체를 닫지 않아 Windows 임시 DB 파일이 잠기는 문제를 테스트가 발견했다. 모든 조회 connection을 명시적으로 close하도록 수정한 뒤 파일 잠금 없이 통과했다.
+
 ## 토큰 의미
 
 ```text
