@@ -87,7 +87,7 @@ flowchart LR
 - [x] HMAC project·thread·turn·event 식별자
 - [x] Git remote 정규화와 origin·unique·ambiguous 선택
 - [x] 첫 단위 테스트
-- [ ] JSONL token parser와 lifecycle delta
+- [x] JSONL token parser와 lifecycle delta
 - [ ] SQLite lineage adapter와 project attribution
 - [ ] outbox·ledger·read model
 - [ ] CLI collect·doctor·report·sync

@@ -194,10 +194,20 @@ delta = 현재 cumulative - 같은 counter 구간의 이전 cumulative
 turn ID가 없는 구버전은 다음 fallback을 사용한다.
 
 ```text
-HMAC(K, raw_thread_id + record_kind + stable_record_ordinal + payload_digest)
+HMAC(K, "usage-fallback:v1:" + raw_thread_id + record_kind + stable_record_ordinal + payload_digest)
 ```
 
 이 경우 `weak_dedupe_key` flag를 추가하고 fork 복사 이력은 별도 prefix 비교로 제외한다.
+
+현재 정의된 진단 flag:
+
+- `weak_dedupe_key`: turn ID가 없는 구버전 fallback
+- `counter_regression`: 누적 total 감소로 delta 격리
+- `component_regression:<field>`: 세부 counter만 감소
+- `token_total_mismatch`, `delta_total_mismatch`: input + output과 total 불일치
+- `reported_last_mismatch`: 양수 delta와 reported last 불일치
+- `compact_reported_last_excluded`: compact 불투명 사용량을 합계에서 제외
+- `metadata_conflict:model`, `metadata_conflict:reasoning_effort`: fork 복사 metadata 충돌
 
 ## 프로젝트 귀속
 

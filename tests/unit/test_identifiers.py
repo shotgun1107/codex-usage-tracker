@@ -7,6 +7,7 @@ import unittest
 
 from codex_usage.privacy.identifiers import (
     IdentifierError,
+    fallback_source_event_id,
     generate_shared_key,
     key_id,
     project_id,
@@ -46,6 +47,27 @@ class IdentifierTests(unittest.TestCase):
 
         self.assertTrue(first.startswith("src_h1_"))
         self.assertNotEqual(first, second)
+
+    def test_fallback_source_event_id_is_stable_and_domain_separated(self) -> None:
+        fallback = fallback_source_event_id(
+            self.key,
+            "thread",
+            "token_count",
+            12,
+            "payload-digest",
+        )
+
+        self.assertEqual(
+            fallback,
+            fallback_source_event_id(
+                self.key,
+                "thread",
+                "token_count",
+                12,
+                "payload-digest",
+            ),
+        )
+        self.assertNotEqual(fallback, source_event_id(self.key, "thread", 12))
 
     def test_key_id_is_shorter_than_full_identifiers(self) -> None:
         identifier = key_id(self.key)

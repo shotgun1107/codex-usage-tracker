@@ -63,6 +63,32 @@ def source_event_id(key: bytes, raw_turn_id: str, ordinal: int) -> str:
     )
 
 
+def fallback_source_event_id(
+    key: bytes,
+    raw_thread_id: str,
+    record_kind: str,
+    record_ordinal: int,
+    payload_digest: str,
+) -> str:
+    """Return a weak fallback ID for legacy records without turn IDs."""
+
+    thread_id = _validate_value(raw_thread_id, "raw_thread_id")
+    kind = _validate_value(record_kind, "record_kind")
+    digest = _validate_value(payload_digest, "payload_digest")
+    if (
+        isinstance(record_ordinal, bool)
+        or not isinstance(record_ordinal, int)
+        or record_ordinal < 0
+    ):
+        raise IdentifierError("record_ordinal must be a non-negative integer")
+    return _derive(
+        key,
+        "src_h1_",
+        "usage-fallback:v1:",
+        f"{thread_id}:{kind}:{record_ordinal}:{digest}",
+    )
+
+
 def key_id(key: bytes) -> str:
     """Return a short, non-secret fingerprint used to detect key mismatch."""
 

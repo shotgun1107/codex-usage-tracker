@@ -394,6 +394,21 @@ remote 변경: alias 이벤트로 과거·현재 연결
 
 `origin`이 없고 cwd도 사라진 작업은 사후 자동 복구가 불가능하다. 따라서 수집기는 증분 실행 시 로컬 Git 폴백 결과를 즉시 정제 이벤트에 보존해야 한다.
 
+## Build 검증: JSONL parser와 lifecycle dedup (2026-08-26)
+
+현재 구현을 로컬 Codex 원문 전체에 read-only로 실행하고 원문·경로·ID는 출력하지 않은 채 구조적 집계만 확인했다. 검사 중에도 active rollout이 append되므로 아래 개수는 해당 시점 snapshot이다.
+
+- rollout 665개, CLI 버전 13종 모두 파싱 성공
+- parse fatal error 0개
+- 약 280,000개 token checkpoint 처리
+- fork 복사 제거 후 약 53,000개 logical usage event
+- duplicate logical group 17,659개에서 token 수치 충돌 0개
+- model·reasoning effort metadata가 복사본마다 다른 group 2,402개는 단일 값 보강 또는 conflict flag 처리
+- turn ID가 없는 구버전 checkpoint 2,409개는 `weak_dedupe_key` 처리
+- `info`가 없는 token_count 68개는 사용량 event가 아니므로 건너뜀
+
+이 검증으로 현재 13개 `cli_version` 표본에서 신규·resume·fork·compact delta와 전역 fork dedup이 중단 없이 동작함을 확인했다. 버전별 지원을 영구 보장하는 것은 아니므로 unknown 구조는 계속 fail-closed 또는 issue로 남긴다.
+
 ## 토큰 의미
 
 ```text

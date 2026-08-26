@@ -1,0 +1,16 @@
+{"timestamp":"2026-08-26T01:00:20Z","type":"session_meta","payload":{"id":"fork-thread","session_id":"fork-thread","forked_from_id":"parent-thread","source":"vscode","cli_version":"0.150.0-alpha.8","cwd":"C:/fixture/project","git":{"repository_url":"https://github.com/example/project.git","branch":"main","commit_hash":"aaaaaaaa"}}}
+{"timestamp":"2026-08-26T01:00:20Z","type":"session_meta","payload":{"id":"parent-thread","session_id":"parent-thread","source":"exec","cli_version":"0.150.0-alpha.8","cwd":"C:/fixture/project","git":{"repository_url":"https://github.com/example/project.git","branch":"main","commit_hash":"aaaaaaaa"}}}
+{"timestamp":"2026-08-26T01:00:20Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-one"}}
+{"timestamp":"2026-08-26T01:00:20Z","type":"turn_context","payload":{"turn_id":"turn-one","model":"gpt-test","effort":"low","cwd":"C:/fixture/project"}}
+{"timestamp":"2026-08-26T01:00:20Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":90,"cached_input_tokens":20,"output_tokens":10,"reasoning_output_tokens":2,"total_tokens":100},"last_token_usage":{"input_tokens":90,"cached_input_tokens":20,"output_tokens":10,"reasoning_output_tokens":2,"total_tokens":100}}}}
+{"timestamp":"2026-08-26T01:00:20Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"turn-one"}}
+{"timestamp":"2026-08-26T01:00:20Z","type":"event_msg","payload":{"type":"thread_settings_applied"}}
+{"timestamp":"2026-08-26T01:00:20Z","type":"event_msg","payload":{"type":"task_started","turn_id":"turn-two"}}
+{"timestamp":"2026-08-26T01:00:20Z","type":"turn_context","payload":{"turn_id":"turn-two","model":"gpt-test-2","reasoning_effort":"medium","cwd":"C:/fixture/project"}}
+{"timestamp":"2026-08-26T01:00:20Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":150,"cached_input_tokens":40,"output_tokens":20,"reasoning_output_tokens":4,"total_tokens":170},"last_token_usage":{"input_tokens":60,"cached_input_tokens":20,"output_tokens":10,"reasoning_output_tokens":2,"total_tokens":70}}}}
+{"timestamp":"2026-08-26T01:00:20Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"turn-two"}}
+{"timestamp":"2026-08-26T01:00:21Z","type":"event_msg","payload":{"type":"thread_settings_applied"}}
+{"timestamp":"2026-08-26T01:00:22Z","type":"event_msg","payload":{"type":"task_started","turn_id":"fork-turn"}}
+{"timestamp":"2026-08-26T01:00:22Z","type":"turn_context","payload":{"turn_id":"fork-turn","model":"gpt-test-2","effort":"medium","cwd":"C:/fixture/project"}}
+{"timestamp":"2026-08-26T01:00:23Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":225,"cached_input_tokens":60,"output_tokens":35,"reasoning_output_tokens":7,"total_tokens":260},"last_token_usage":{"input_tokens":75,"cached_input_tokens":20,"output_tokens":15,"reasoning_output_tokens":3,"total_tokens":90}}}}
+{"timestamp":"2026-08-26T01:00:24Z","type":"event_msg","payload":{"type":"task_complete","turn_id":"fork-turn"}}
