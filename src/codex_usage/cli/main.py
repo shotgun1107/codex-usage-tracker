@@ -1,4 +1,4 @@
-"""User-facing init, collect, sync, report, and doctor commands."""
+"""User-facing collection, sync, reporting, and project commands."""
 
 from __future__ import annotations
 
@@ -10,6 +10,7 @@ from pathlib import Path
 import sqlite3
 import sys
 from typing import TextIO
+import unicodedata
 import uuid
 from zoneinfo import ZoneInfo
 
@@ -17,6 +18,11 @@ from codex_usage import __version__
 from codex_usage.application.collect import CollectError, CollectService
 from codex_usage.application.doctor import CheckStatus, run_doctor
 from codex_usage.application.lock import ApplicationLockError
+from codex_usage.application.project_management import (
+    MappingWriteResult,
+    ProjectManagementError,
+    ProjectManagementService,
+)
 from codex_usage.application.sync import SyncError, SyncService
 from codex_usage.config import (
     AppConfig,
@@ -56,6 +62,7 @@ _EXPECTED_ERRORS = (
     LedgerSchemaError,
     LocalStoreError,
     PrivacyViolation,
+    ProjectManagementError,
     ReportError,
     SecretStoreError,
     SyncError,
@@ -101,6 +108,8 @@ def main(
             return _run_sync(config, shared_key, output)
         if arguments.command == "doctor":
             return _run_doctor(config, shared_key, output)
+        if arguments.command == "project":
+            return _run_project(arguments, config, shared_key, output)
         parser.error("unknown command")
     except _EXPECTED_ERRORS as error:
         print(f"오류: {error}", file=error_output)
@@ -143,6 +152,24 @@ def _build_parser() -> argparse.ArgumentParser:
     commands.add_parser("collect", help="collect and flush Codex token usage")
     commands.add_parser("sync", help="synchronize the private Git ledger")
     commands.add_parser("doctor", help="run read-only environment diagnostics")
+    project = commands.add_parser("project", help="inspect and map projects")
+    project_commands = project.add_subparsers(
+        dest="project_command",
+        required=True,
+    )
+    project_commands.add_parser("list", help="list known projects")
+    project_commands.add_parser(
+        "unresolved",
+        help="list unclassified and ambiguous threads",
+    )
+    link = project_commands.add_parser("link", help="manually assign usage")
+    link_subject = link.add_mutually_exclusive_group(required=True)
+    link_subject.add_argument("--thread", help="raw local ID or thr_h1 ID")
+    link_subject.add_argument("--turn", help="raw local ID or turn_h1 ID")
+    link.add_argument("--project", required=True, help="target prj_h1 project ID")
+    alias = project_commands.add_parser("alias", help="merge an old project ID")
+    alias.add_argument("--from", dest="source_project", required=True)
+    alias.add_argument("--to", dest="target_project", required=True)
     report = commands.add_parser("report", help="show project token usage")
     report.add_argument("--from", dest="from_date", help="first local date YYYY-MM-DD")
     report.add_argument("--to", dest="to_date", help="last local date YYYY-MM-DD")
@@ -265,6 +292,127 @@ def _run_sync(config: AppConfig, shared_key: bytes, output: TextIO) -> int:
         file=output,
     )
     return 0
+
+
+def _run_project(
+    arguments: argparse.Namespace,
+    config: AppConfig,
+    shared_key: bytes,
+    output: TextIO,
+) -> int:
+    service = ProjectManagementService(config, shared_key)
+    if arguments.project_command == "list":
+        rows = service.list_projects()
+        _print_table(
+            ("project_id", "name", "tokens", "threads", "events", "excluded"),
+            tuple(
+                (
+                    row.project_id,
+                    row.name or "-",
+                    f"{row.total_tokens:,}",
+                    f"{row.thread_count:,}",
+                    f"{row.included_events:,}",
+                    f"{row.excluded_events:,}",
+                )
+                for row in rows
+            ),
+            output,
+            empty_message="등록된 프로젝트가 없습니다.",
+        )
+        return 0
+    if arguments.project_command == "unresolved":
+        rows = service.list_unresolved()
+        _print_table(
+            ("thread_key", "local_thread_id", "reason", "tokens", "events", "excluded"),
+            tuple(
+                (
+                    row.thread_key,
+                    row.local_thread_id or "-",
+                    ",".join(row.resolutions),
+                    f"{row.total_tokens:,}",
+                    f"{row.included_events:,}",
+                    f"{row.excluded_events:,}",
+                )
+                for row in rows
+            ),
+            output,
+            empty_message="미분류 또는 모호한 작업이 없습니다.",
+        )
+        return 0
+    if arguments.project_command == "link":
+        subject_type = "thread" if arguments.thread is not None else "turn"
+        subject = arguments.thread if arguments.thread is not None else arguments.turn
+        if not isinstance(subject, str):
+            raise ProjectManagementError("manual link subject is missing")
+        result = service.link(
+            subject_type=subject_type,
+            subject=subject,
+            target_project_id=arguments.project,
+        )
+        _print_mapping_result("프로젝트 연결", result, output)
+        return 0
+    if arguments.project_command == "alias":
+        result = service.alias(
+            source_project_id=arguments.source_project,
+            target_project_id=arguments.target_project,
+        )
+        _print_mapping_result("프로젝트 별칭", result, output)
+        return 0
+    raise ProjectManagementError("unknown project command")
+
+
+def _print_mapping_result(
+    label: str,
+    result: MappingWriteResult,
+    output: TextIO,
+) -> None:
+    status = "기록 완료" if result.changed else "변경 없음"
+    print(
+        f"{label} {status}: revision {result.revision}, "
+        f"조회 DB generation {result.read_model_state.generation}",
+        file=output,
+    )
+    if result.changed:
+        print("다른 기기와 공유하려면 codex-usage sync를 실행하세요.", file=output)
+
+
+def _print_table(
+    headers: tuple[str, ...],
+    rows: tuple[tuple[str, ...], ...],
+    output: TextIO,
+    *,
+    empty_message: str,
+) -> None:
+    if not rows:
+        print(empty_message, file=output)
+        return
+    widths = [_display_width(header) for header in headers]
+    for row in rows:
+        for index, value in enumerate(row):
+            widths[index] = max(widths[index], _display_width(value))
+    print(
+        "  ".join(_pad(header, widths[index]) for index, header in enumerate(headers)),
+        file=output,
+    )
+    print("  ".join("-" * width for width in widths), file=output)
+    for row in rows:
+        print(
+            "  ".join(_pad(value, widths[index]) for index, value in enumerate(row)),
+            file=output,
+        )
+
+
+def _display_width(value: str) -> int:
+    return sum(
+        0
+        if unicodedata.combining(character)
+        else 2 if unicodedata.east_asian_width(character) in {"W", "F"} else 1
+        for character in value
+    )
+
+
+def _pad(value: str, width: int) -> str:
+    return value + " " * max(0, width - _display_width(value))
 
 
 def _run_report(

@@ -134,6 +134,37 @@ def usage_event_id(
     )
 
 
+def mapping_event_id(
+    key: bytes,
+    logical_key: str,
+    revision: int,
+    payload_without_event_id: Mapping[str, object],
+) -> str:
+    """Bind one immutable mapping revision to its sanitized payload."""
+
+    logical = _validate_value(logical_key, "logical_key")
+    if isinstance(revision, bool) or not isinstance(revision, int) or revision < 1:
+        raise IdentifierError("revision must be a positive integer")
+    if "event_id" in payload_without_event_id:
+        raise IdentifierError("payload_without_event_id must not contain event_id")
+    try:
+        canonical = json.dumps(
+            dict(payload_without_event_id),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except (TypeError, ValueError) as error:
+        raise IdentifierError("mapping event payload must be canonical JSON") from error
+    return _derive(
+        key,
+        "map_h1_",
+        "mapping-event:v1:",
+        f"{logical}:{revision}:{canonical}",
+    )
+
+
 def _derive(
     key: bytes,
     output_prefix: str,

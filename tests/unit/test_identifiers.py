@@ -10,6 +10,7 @@ from codex_usage.privacy.identifiers import (
     fallback_source_event_id,
     generate_shared_key,
     key_id,
+    mapping_event_id,
     project_id,
     source_event_id,
     thread_key,
@@ -63,6 +64,36 @@ class IdentifierTests(unittest.TestCase):
             usage_event_id(self.key, source, 0, {})
         with self.assertRaises(IdentifierError):
             usage_event_id(self.key, source, 1, {"event_id": "recursive"})
+
+    def test_mapping_event_id_binds_logical_key_revision_and_payload(self) -> None:
+        first = mapping_event_id(
+            self.key,
+            "manual_assignment:thread:thr_h1_value",
+            1,
+            {"b": 2, "a": 1},
+        )
+        reordered = mapping_event_id(
+            self.key,
+            "manual_assignment:thread:thr_h1_value",
+            1,
+            {"a": 1, "b": 2},
+        )
+
+        self.assertEqual(first, reordered)
+        self.assertTrue(first.startswith("map_h1_"))
+        self.assertNotEqual(
+            first,
+            mapping_event_id(
+                self.key,
+                "manual_assignment:thread:thr_h1_value",
+                2,
+                {"a": 1, "b": 2},
+            ),
+        )
+        with self.assertRaises(IdentifierError):
+            mapping_event_id(self.key, "logical", 0, {})
+        with self.assertRaises(IdentifierError):
+            mapping_event_id(self.key, "logical", 1, {"event_id": "recursive"})
 
     def test_fallback_source_event_id_is_stable_and_domain_separated(self) -> None:
         fallback = fallback_source_event_id(

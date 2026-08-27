@@ -9,14 +9,15 @@ import tempfile
 import unittest
 
 from codex_usage.application.sync import SyncService
+from codex_usage.application.project_management import ProjectManagementService
 from codex_usage.cli import main
 from codex_usage.config import AppConfig, save_config
-from codex_usage.ledger.jsonl import ledger_relative_path
+from codex_usage.ledger.jsonl import LedgerReader, ledger_relative_path
 from codex_usage.privacy.identifiers import generate_shared_key, key_id
 from codex_usage.secret_store import MemorySecretStore
 from codex_usage.storage.sqlite import LocalStateStore
 from codex_usage.sync.git import GitSyncError
-from tests.ledger_events import opaque, usage_event
+from tests.ledger_events import PROJECT_ORIGINAL, opaque, usage_event
 
 
 DEVICE_ONE = "00000000-0000-4000-8000-000000000011"
@@ -202,6 +203,36 @@ class GitSyncIntegrationTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertIn("동기화 완료", output.getvalue())
         self.assertIn("통합 장부 이벤트 1", output.getvalue())
+
+    def test_manual_project_mapping_is_committed_and_pushed(self) -> None:
+        assigned = _event(self.shared_key, DEVICE_ONE, "assigned", total=12)
+        unresolved = _event(self.shared_key, DEVICE_ONE, "unresolved", total=20)
+        unresolved["project_id"] = None
+        unresolved["project_resolution"] = "unclassified"
+        _append_event(self.checkout, assigned)
+        _append_event(self.checkout, unresolved)
+        SyncService(self.config, self.shared_key).sync()
+
+        mapping = ProjectManagementService(
+            self.config,
+            self.shared_key,
+        ).link(
+            subject_type="thread",
+            subject=str(unresolved["thread_key"]),
+            target_project_id=PROJECT_ORIGINAL,
+        )
+        result = SyncService(self.config, self.shared_key).sync()
+
+        self.assertTrue(mapping.changed)
+        self.assertTrue(result.commit_created)
+        self.assertTrue(result.pushed)
+        verification = self.root / "mapping-verification"
+        _git(None, "clone", str(self.remote), str(verification))
+        events = LedgerReader(verification).read_all().events
+        self.assertEqual(
+            sum(event.get("event_type") == "mapping" for event in events),
+            1,
+        )
 
 
 def _config(

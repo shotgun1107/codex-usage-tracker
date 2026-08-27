@@ -345,11 +345,11 @@ tests/
 6. ✅ CLI init·collect·doctor
 7. ✅ report table·Markdown
 8. ✅ Git sync
-9. ⏳ project list·manual link·alias CLI
+9. ✅ project list·manual link·alias CLI
 10. ⏳ doctor 보강·다기기 end-to-end 수용 검증
 11. ⏸️ 핵심 프로그램 완성 후 quota 보조 수집
 
-다음 구현 단위는 9번인 프로젝트 관리 CLI다. 한도와 초기화 시각은 핵심 프로그램이 완성된 뒤 추가한다. revision·alias·manual mapping replay core는 4번과 함께 구현됐다.
+다음 구현 단위는 10번인 doctor 보강과 다기기 end-to-end 수용 검증이다. 한도와 초기화 시각은 핵심 프로그램이 완성된 뒤 추가한다.
 
 ## ADR 목록
 

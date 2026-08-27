@@ -20,6 +20,7 @@
 - Windows Credential Manager 기반 공유 HMAC 키 보관
 - 변경 rollout 감지와 `init·collect·sync·report·doctor` CLI
 - 기기별 변경 경계·append-only 검증을 적용한 fail-closed Git 동기화
+- 프로젝트 목록·미분류 조회와 append-only 수동 연결·별칭 CLI
 - 표준 라이브러리 기반 단위 테스트
 
 Codex 대화·코드·명령·로컬 경로·raw remote는 중앙 장부에 저장하지 않는 것을 원칙으로 합니다. 공개 소스 저장소와 사용자별 비공개 데이터 장부는 분리합니다.
@@ -67,13 +68,25 @@ codex-usage report --markdown reports\usage.md
 
 지원 필터는 project·model·device·source이며, 그룹은 project·date·thread·model·effort·device·source를 조합할 수 있습니다. 날짜는 기본 `Asia/Seoul` 기준입니다. `delta=null` 이벤트는 합계에서 제외하고 건수를 별도로 표시합니다.
 
+자동 분류되지 않은 작업을 확인하고 기존 프로젝트에 연결합니다.
+
+```powershell
+codex-usage project list
+codex-usage project unresolved
+codex-usage project link --thread <raw-thread-id-or-thr_h1-id> --project <prj_h1-id>
+codex-usage project alias --from <old-prj_h1-id> --to <current-prj_h1-id>
+codex-usage sync
+```
+
+`project unresolved`는 이 기기의 Codex SQLite에서 원본 thread ID를 찾을 수 있을 때만 로컬 화면에 표시합니다. `project link`는 입력받은 원본 ID를 즉시 HMAC 식별자로 바꾸며 Git 장부에는 원본 ID를 기록하지 않습니다. 같은 연결은 멱등 처리하고, 연결 변경은 이전 mapping을 가리키는 새 revision으로 보존합니다.
+
 ## 테스트
 
 ```powershell
 python -m unittest discover -s tests -t . -v
 ```
 
-현재 자동 테스트 141개 중 140개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
+현재 자동 테스트 148개 중 147개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
 
 ## 문서
 

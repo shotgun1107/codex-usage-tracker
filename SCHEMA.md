@@ -307,6 +307,7 @@ ledger/
 - 파일 기록 후 outbox 갱신 전에 종료되면 재실행 시 같은 경로의 `event_id`와 canonical payload를 비교해 중복 append를 막는다.
 - crash로 마지막 줄이 불완전하면 reader는 그 줄을 무시한다. 자기 기기 writer는 마지막 LF 이후의 불완전 byte만 제거하고 pending outbox에서 다시 기록한다.
 - event의 `device_id`, UTC 날짜, `event_type`과 실제 상대 경로가 일치하지 않으면 읽기와 쓰기를 중단한다.
+- `manual_assignment`와 `project_alias`의 같은 logical key를 다시 지정하면 기존 줄을 수정하지 않고 `revision + 1`과 `supersedes`로 연결한다.
 
 ## 로컬 상태 DB
 

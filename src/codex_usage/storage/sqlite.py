@@ -213,25 +213,7 @@ class LocalStateStore:
                 )
 
             now = _utc_now()
-            for event_id, event_type, payload_json in encoded_events:
-                existing = connection.execute(
-                    "SELECT payload_json FROM outbox_events WHERE event_id = ?",
-                    (event_id,),
-                ).fetchone()
-                if existing is None:
-                    connection.execute(
-                        """
-                        INSERT INTO outbox_events (
-                            event_id, event_type, payload_json, enqueued_at
-                        ) VALUES (?, ?, ?, ?)
-                        """,
-                        (event_id, event_type, payload_json, now),
-                    )
-                    inserted += 1
-                elif existing["payload_json"] != payload_json:
-                    raise OutboxConflict(
-                        "event_id already exists with different content"
-                    )
+            inserted = _enqueue_encoded_events(connection, encoded_events, now)
 
             for issue in issues:
                 connection.execute(
@@ -270,6 +252,29 @@ class LocalStateStore:
                     cursor.last_complete_line_digest,
                     now,
                 ),
+            )
+            connection.commit()
+            return inserted
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def enqueue_outbox_events(
+        self,
+        events: Iterable[Mapping[str, object]],
+    ) -> int:
+        """Atomically enqueue sanitized non-source events without a cursor."""
+
+        encoded_events = tuple(_encode_outbox_event(event) for event in events)
+        connection = self._connect()
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            inserted = _enqueue_encoded_events(
+                connection,
+                encoded_events,
+                _utc_now(),
             )
             connection.commit()
             return inserted
@@ -514,6 +519,32 @@ def _encode_outbox_event(event: Mapping[str, object]) -> tuple[str, str, str]:
     except (TypeError, ValueError) as error:
         raise ValueError("outbox event is not canonical JSON") from error
     return event_id, event_type, payload_json
+
+
+def _enqueue_encoded_events(
+    connection: sqlite3.Connection,
+    encoded_events: Iterable[tuple[str, str, str]],
+    enqueued_at: str,
+) -> int:
+    inserted = 0
+    for event_id, event_type, payload_json in encoded_events:
+        existing = connection.execute(
+            "SELECT payload_json FROM outbox_events WHERE event_id = ?",
+            (event_id,),
+        ).fetchone()
+        if existing is None:
+            connection.execute(
+                """
+                INSERT INTO outbox_events (
+                    event_id, event_type, payload_json, enqueued_at
+                ) VALUES (?, ?, ?, ?)
+                """,
+                (event_id, event_type, payload_json, enqueued_at),
+            )
+            inserted += 1
+        elif existing["payload_json"] != payload_json:
+            raise OutboxConflict("event_id already exists with different content")
+    return inserted
 
 
 def _validate_ledger_path(path: str) -> str:
