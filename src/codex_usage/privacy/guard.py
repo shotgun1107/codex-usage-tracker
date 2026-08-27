@@ -130,6 +130,8 @@ class LedgerPrivacyGuard:
             for index, child in enumerate(value):
                 self._scan(child, f"{path}[{index}]")
         elif isinstance(value, str):
+            if any(ord(character) < 32 or ord(character) == 127 for character in value):
+                raise PrivacyViolation(path, "control character detected")
             if _NETWORK_URL.search(value) or _SCP_REMOTE.search(value):
                 raise PrivacyViolation(path, "raw network location detected")
             if _HOST_PATH.search(value):

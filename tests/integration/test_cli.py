@@ -73,6 +73,30 @@ class CliIntegrationTests(unittest.TestCase):
             self.assertIn("[OK] shared-key", doctor_output.getvalue())
             self.assertIn("[경고] ledger-git", doctor_output.getvalue())
 
+            markdown_path = root / "usage-report.md"
+            report_output = StringIO()
+            report_code = main(
+                (
+                    "--config",
+                    str(config_path),
+                    "report",
+                    "--from",
+                    "2026-08-26",
+                    "--to",
+                    "2026-08-26",
+                    "--group-by",
+                    "project,date",
+                    "--markdown",
+                    str(markdown_path),
+                ),
+                stdout=report_output,
+            )
+
+            self.assertEqual(report_code, 0)
+            self.assertIn("총 토큰: 230", report_output.getvalue())
+            self.assertTrue(markdown_path.is_file())
+            self.assertIn("# Codex 사용량 보고서", markdown_path.read_text(encoding="utf-8"))
+
     def test_init_can_import_existing_recovery_key_without_printing_it(self) -> None:
         shared_key = generate_shared_key()
         recovery_key = encode_recovery_key(shared_key)
@@ -117,6 +141,45 @@ class CliIntegrationTests(unittest.TestCase):
             self.assertEqual(code, 2)
             self.assertIn("오류:", error_output.getvalue())
             self.assertNotIn("Traceback", error_output.getvalue())
+
+    def test_invalid_report_date_is_reported(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            shared_key = generate_shared_key()
+            recovery_key = encode_recovery_key(shared_key)
+            config_path = root / "config.json"
+            secrets = MemorySecretStore()
+            main(
+                (
+                    "--config",
+                    str(config_path),
+                    "init",
+                    "--ledger",
+                    str(root / "ledger"),
+                    "--codex-home",
+                    str(root / "codex-home"),
+                    "--import-key",
+                ),
+                secret_store=secrets,
+                secret_reader=lambda: recovery_key,
+                stdout=StringIO(),
+            )
+            error_output = StringIO()
+
+            code = main(
+                (
+                    "--config",
+                    str(config_path),
+                    "report",
+                    "--from",
+                    "not-a-date",
+                ),
+                secret_store=secrets,
+                stderr=error_output,
+            )
+
+            self.assertEqual(code, 2)
+            self.assertIn("YYYY-MM-DD", error_output.getvalue())
 
 
 if __name__ == "__main__":

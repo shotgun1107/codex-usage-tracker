@@ -66,6 +66,7 @@ class LedgerPrivacyGuardTests(unittest.TestCase):
             display_value="https://github.com/company/private.git"
         )
         forbidden_field = dict(usage_event(), workdir="C:/private")
+        control_character = mapping_event(display_value="unsafe\nname")
 
         for event in (
             raw_project,
@@ -73,6 +74,7 @@ class LedgerPrivacyGuardTests(unittest.TestCase):
             windows_path,
             network_remote,
             forbidden_field,
+            control_character,
         ):
             with self.assertRaises(PrivacyViolation):
                 self.guard.validate(event)

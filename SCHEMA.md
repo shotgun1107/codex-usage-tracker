@@ -351,6 +351,16 @@ read_model_state
 
 replay는 입력 파일과 line 순서를 신뢰하지 않는다. 같은 장부 집합은 순서와 재실행 횟수에 관계없이 동일한 effective event를 만들어야 한다. HMAC `key_id`가 둘 이상이거나 로컬 키와 다르면 replay를 시작하지 않는다.
 
+## 보고서 집계 규칙
+
+- `occurred_at`은 UTC로 보존하고 기본 보고 날짜는 `Asia/Seoul`로 변환한다.
+- 날짜 범위는 표시 시간대의 local date 양끝을 포함한다.
+- project alias와 manual assignment가 적용된 `effective_project_id`를 사용한다.
+- `delta.total_tokens=null`인 격리 이벤트는 토큰 합계에서 제외하고 제외 건수로 표시한다.
+- 일부 이벤트에만 존재하는 세부 토큰 필드는 알려진 값만 더하고 부분 집계 `*`를 표시한다.
+- cached input과 reasoning output은 각각 input·output의 부분집합이므로 total에 다시 더하지 않는다.
+- group에 date가 있으면 date를 제외한 나머지 차원별로 누적 total을 계산한다.
+
 ## 스키마 검증 조건
 
 - 체크인된 Draft 2020-12 JSON Schema로 모든 event line을 쓰기 전과 읽기 후에 검증한다.

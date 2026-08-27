@@ -483,6 +483,20 @@ reader가 안전을 위해 반환한 read-only mapping을 replay가 직렬화하
 
 Windows Credential Manager adapter는 실제 API까지 호출했지만 현재 자동 테스트 호스트에는 interactive logon session이 없어 `WinError 1312`가 반환됐다. 이 경우만 환경상 skip으로 구분했으며, 일반 데스크톱 로그온 세션에서의 최종 acceptance가 남아 있다.
 
+## Build 검증: 실제 report CLI (2026-08-27)
+
+현재 로컬 로그를 임시 장부와 read model로 수집한 뒤 project·date 기본 보고서를 생성했다. 프로젝트 ID와 이름, 토큰 원문은 검증 출력에서 제외했다.
+
+- ledger usage event 56,208개 중 56,178개를 합계에 포함
+- `delta=null` 격리 이벤트 30개는 합계 제외 건수로 표시
+- 기본 `project,date` 그룹 결과 70행
+- 터미널 표 약 10,200자와 Markdown 약 8,446자를 같은 report model에서 생성
+- read-only SQLite 조회·KST 변환·집계·두 형식 렌더링에 0.628초
+- 프로젝트·날짜·모델·기기·source 필터와 project·date·thread·model·effort·device·source 그룹 조합을 합성 fixture로 검증
+- 승인된 project/device 표시명, 짧은 HMAC fallback, Markdown escape, 한글 터미널 폭을 검증
+
+보고서는 cache·reasoning을 total에 다시 더하지 않으며, 구버전에서 일부 세부 필드만 누락된 합계에는 `*`를 표시한다.
+
 ## 토큰 의미
 
 ```text

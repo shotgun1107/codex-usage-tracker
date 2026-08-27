@@ -52,13 +52,24 @@ codex-usage doctor
 
 `collect`는 변경되지 않은 rollout을 건너뛰고, 변경된 rollout만 누적 기준선부터 다시 계산한 뒤 이미 저장된 `source_event_id`를 제외합니다. 손상됐거나 계속 쓰이는 파일은 cursor를 전진시키지 않고 다음 실행에서 재시도합니다.
 
+프로젝트·날짜별 사용량을 조회하거나 Markdown으로 남깁니다.
+
+```powershell
+codex-usage report
+codex-usage report --period week --group-by project,date,model
+codex-usage report --from 2026-08-01 --to 2026-08-31 --project <ID-or-name>
+codex-usage report --markdown reports\usage.md
+```
+
+지원 필터는 project·model·device·source이며, 그룹은 project·date·thread·model·effort·device·source를 조합할 수 있습니다. 날짜는 기본 `Asia/Seoul` 기준입니다. `delta=null` 이벤트는 합계에서 제외하고 건수를 별도로 표시합니다.
+
 ## 테스트
 
 ```powershell
 python -m unittest discover -s tests -t . -v
 ```
 
-현재 자동 테스트 127개 중 126개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 실제 로컬 익명 검증에서는 rollout 712개에서 사용량 이벤트 56,008개를 생성했으며, 10,744개는 근거 부족으로 추측하지 않고 미분류했습니다.
+현재 자동 테스트 132개 중 131개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
 
 ## 문서
 

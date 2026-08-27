@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import argparse
 from collections.abc import Callable, Sequence
+from datetime import date, datetime, timedelta
 import getpass
 from pathlib import Path
 import sqlite3
 import sys
 from typing import TextIO
 import uuid
+from zoneinfo import ZoneInfo
 
 from codex_usage import __version__
 from codex_usage.application.collect import CollectError, CollectService
@@ -26,6 +28,12 @@ from codex_usage.ledger.replay import LedgerReplayError
 from codex_usage.ledger.schema_validation import LedgerSchemaError
 from codex_usage.privacy.guard import PrivacyViolation
 from codex_usage.privacy.identifiers import generate_shared_key, key_id
+from codex_usage.reports.query import ReportError, ReportQuery, build_usage_report
+from codex_usage.reports.render import (
+    render_markdown,
+    render_terminal,
+    write_markdown_report,
+)
 from codex_usage.secret_store import (
     SecretStore,
     SecretStoreError,
@@ -44,6 +52,7 @@ _EXPECTED_ERRORS = (
     LedgerSchemaError,
     LocalStoreError,
     PrivacyViolation,
+    ReportError,
     SecretStoreError,
 )
 
@@ -62,9 +71,9 @@ def main(
     arguments = parser.parse_args(argv)
 
     try:
-        secrets = secret_store or default_secret_store()
         config_path = Path(arguments.config).expanduser().resolve()
         if arguments.command == "init":
+            secrets = secret_store or default_secret_store()
             return _run_init(
                 arguments,
                 config_path,
@@ -74,6 +83,9 @@ def main(
             )
 
         config = load_config(config_path)
+        if arguments.command == "report":
+            return _run_report(arguments, config, output)
+        secrets = secret_store or default_secret_store()
         shared_key = secrets.get(config.credential_target)
         if shared_key is None:
             raise SecretStoreError("shared key is missing from Credential Manager")
@@ -122,6 +134,21 @@ def _build_parser() -> argparse.ArgumentParser:
 
     commands.add_parser("collect", help="collect and flush Codex token usage")
     commands.add_parser("doctor", help="run read-only environment diagnostics")
+    report = commands.add_parser("report", help="show project token usage")
+    report.add_argument("--from", dest="from_date", help="first local date YYYY-MM-DD")
+    report.add_argument("--to", dest="to_date", help="last local date YYYY-MM-DD")
+    report.add_argument(
+        "--period",
+        choices=("all", "today", "week"),
+        default="all",
+    )
+    report.add_argument("--timezone", default="Asia/Seoul")
+    report.add_argument("--project")
+    report.add_argument("--model")
+    report.add_argument("--device")
+    report.add_argument("--source")
+    report.add_argument("--group-by", default="project,date")
+    report.add_argument("--markdown", help="write the same report as Markdown")
     return parser
 
 
@@ -212,6 +239,59 @@ def _run_doctor(config: AppConfig, shared_key: bytes, output: TextIO) -> int:
     for check in result.checks:
         print(f"[{labels[check.status]}] {check.name}: {check.message}", file=output)
     return 2 if result.has_errors else 0
+
+
+def _run_report(
+    arguments: argparse.Namespace,
+    config: AppConfig,
+    output: TextIO,
+) -> int:
+    from_date, to_date = _report_dates(arguments)
+    group_by = tuple(
+        value.strip()
+        for value in arguments.group_by.split(",")
+        if value.strip()
+    )
+    query = ReportQuery(
+        from_date=from_date,
+        to_date=to_date,
+        timezone_name=arguments.timezone,
+        project=arguments.project,
+        model=arguments.model,
+        device=arguments.device,
+        source=arguments.source,
+        group_by=group_by,
+    )
+    report = build_usage_report(config.state_db, query)
+    print(render_terminal(report), end="", file=output)
+    if arguments.markdown:
+        markdown_path = write_markdown_report(
+            arguments.markdown,
+            render_markdown(report),
+        )
+        print(f"Markdown 저장 완료: {markdown_path}", file=output)
+    return 0
+
+
+def _report_dates(arguments: argparse.Namespace) -> tuple[date | None, date | None]:
+    try:
+        explicit_from = date.fromisoformat(arguments.from_date) if arguments.from_date else None
+        explicit_to = date.fromisoformat(arguments.to_date) if arguments.to_date else None
+    except ValueError as error:
+        raise ReportError("report date must use YYYY-MM-DD") from error
+    if arguments.period != "all" and (
+        explicit_from is not None or explicit_to is not None
+    ):
+        raise ReportError("--period today/week cannot be combined with --from/--to")
+    if arguments.period == "all":
+        return explicit_from, explicit_to
+    try:
+        today = datetime.now(ZoneInfo(arguments.timezone)).date()
+    except Exception as error:
+        raise ReportError("timezone is unavailable") from error
+    if arguments.period == "today":
+        return today, today
+    return today - timedelta(days=today.weekday()), today
 
 
 def _read_recovery_key() -> str:
