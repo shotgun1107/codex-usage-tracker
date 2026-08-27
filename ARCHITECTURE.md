@@ -341,12 +341,12 @@ tests/
 3. ✅ SQLite lineage adapter와 turn별 project attribution
 4. ✅ local SQLite outbox·read model
 5. ✅ ledger JSONL writer·reader·JSON Schema·privacy validation
-6. ⏳ CLI collect·doctor
+6. ✅ CLI init·collect·doctor
 7. ⏳ report table·Markdown
 8. ⏳ Git sync
 9. ⏳ quota 보조 수집
 
-다음 구현 단위는 6번인 CLI `collect·doctor`다. revision·alias·manual mapping replay core는 4번과 함께 구현됐다.
+다음 구현 단위는 7번인 CLI 표·Markdown 보고서다. revision·alias·manual mapping replay core는 4번과 함께 구현됐다.
 
 ## ADR 목록
 

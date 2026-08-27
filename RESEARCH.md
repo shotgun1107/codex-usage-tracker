@@ -465,6 +465,24 @@ SQLite outbox에서 기기별 장부 파일로 기록하고 다시 replay·read 
 
 reader가 안전을 위해 반환한 read-only mapping을 replay가 직렬화하지 못하는 연결 오류도 end-to-end 테스트에서 발견했다. replay 입구에서 일반 JSON object로 정규화하도록 수정했다.
 
+## Build 검증: 실제 collect CLI (2026-08-27)
+
+임시 공유키·기기 ID·장부·SQLite를 사용해 현재 로컬 Codex 원문을 외부 전송 없이 end-to-end 수집했다. 원본 ID·경로·remote·프로젝트명은 결과에 출력하지 않았다.
+
+- rollout 712개 발견 및 Codex SQLite lineage 사용 성공
+- 정제 usage event 56,008개를 JSONL 장부와 read model에 생성
+- 프로젝트 근거가 부족한 10,744개는 `unclassified` 유지
+- parser issue 2,477개를 원문 없이 코드·위치 정보로 보존
+- 실제 갱신 중인 rollout 4개를 두 번째 수집에서 감지하고 신규 event 14개만 추가
+- 안정된 완전 line 자체가 손상된 기존 rollout은 파일 단위로 격리하고 다른 파일 수집 지속
+- 장부를 두 번 읽던 경로를 한 번 읽기 + pending memory merge로 바꿔 최초·재수집 합계 시간을 약 128초에서 95.6초로 단축
+
+합성 CLI acceptance에서는 첫 수집 4개, 같은 파일 재수집 0개, 새 turn 추가 후 1개만 기록되는 흐름을 검증했다.
+
+배포 검증에서는 wheel을 새 임시 가상환경에 설치해 `codex-usage.exe --version`이 `0.1.0`을 반환하고, 설치된 data 경로에서 ledger JSON Schema를 다시 읽는 것까지 확인했다.
+
+Windows Credential Manager adapter는 실제 API까지 호출했지만 현재 자동 테스트 호스트에는 interactive logon session이 없어 `WinError 1312`가 반환됐다. 이 경우만 환경상 skip으로 구분했으며, 일반 데스크톱 로그온 세션에서의 최종 acceptance가 남아 있다.
+
 ## 토큰 의미
 
 ```text

@@ -57,6 +57,7 @@ class LocalStateStoreTests(unittest.TestCase):
 
             self.assertEqual(inserted, 2)
             self.assertEqual(store.get_cursor("source-one"), cursor())
+            self.assertEqual(dict(store.all_cursors()), {"source-one": cursor()})
             self.assertEqual(
                 [item.event_id for item in store.pending_outbox()],
                 ["event-two", "event-one"],
@@ -64,6 +65,7 @@ class LocalStateStoreTests(unittest.TestCase):
             self.assertEqual(store.pending_outbox()[0].payload()["label"], "한글")
             self.assertEqual(store.parser_issue_count(), 1)
             self.assertEqual(store.outbox_counts().pending, 2)
+            self.assertEqual(store.known_usage_source_event_ids(), frozenset())
 
             store.store_collection(
                 cursor(offset=20),
@@ -96,6 +98,25 @@ class LocalStateStoreTests(unittest.TestCase):
             assert stored_cursor is not None
             self.assertEqual(stored_cursor.byte_offset, 20)
             self.assertEqual(store.outbox_counts().pending, 1)
+
+    def test_known_usage_source_ids_include_pending_and_flushed_history(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            store = LocalStateStore(Path(directory) / "state.sqlite")
+            usage = event("event-one")
+            usage["source_event_id"] = "source-event-one"
+            store.store_collection(cursor(), (usage,))
+
+            self.assertEqual(
+                store.known_usage_source_event_ids(),
+                frozenset({"source-event-one"}),
+            )
+            store.mark_outbox_flushed(
+                {"event-one": "devices/device/usage/2026/08/26.jsonl"}
+            )
+            self.assertEqual(
+                store.known_usage_source_event_ids(),
+                frozenset({"source-event-one"}),
+            )
 
     def test_event_conflict_rolls_back_cursor_and_new_events(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

@@ -14,6 +14,7 @@ from codex_usage.privacy.identifiers import (
     source_event_id,
     thread_key,
     turn_key,
+    usage_event_id,
 )
 
 
@@ -47,6 +48,21 @@ class IdentifierTests(unittest.TestCase):
 
         self.assertTrue(first.startswith("src_h1_"))
         self.assertNotEqual(first, second)
+
+    def test_usage_event_id_binds_revision_and_canonical_payload(self) -> None:
+        source = source_event_id(self.key, "turn", 0)
+        first = usage_event_id(self.key, source, 1, {"b": 2, "a": 1})
+        reordered = usage_event_id(self.key, source, 1, {"a": 1, "b": 2})
+        revised = usage_event_id(self.key, source, 2, {"a": 1, "b": 2})
+
+        self.assertEqual(first, reordered)
+        self.assertTrue(first.startswith("evt_h1_"))
+        self.assertNotEqual(first, revised)
+
+        with self.assertRaises(IdentifierError):
+            usage_event_id(self.key, source, 0, {})
+        with self.assertRaises(IdentifierError):
+            usage_event_id(self.key, source, 1, {"event_id": "recursive"})
 
     def test_fallback_source_event_id_is_stable_and_domain_separated(self) -> None:
         fallback = fallback_source_event_id(

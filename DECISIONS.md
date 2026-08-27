@@ -45,6 +45,9 @@
 | D-038 | 로컬 SQLite outbox와 재생성 가능한 read model을 함께 사용한다. | crash-safe 수집과 빠른 조회를 함께 만족한다. |
 | D-039 | HMAC 키는 Windows Credential Manager에 저장하고 비가역 key ID로 기기 불일치를 탐지한다. | 비밀을 Git에 두지 않고 잘못된 키 혼용을 차단한다. |
 | D-040 | Git sync conflict·privacy failure·key mismatch는 자동 해결하지 않고 안전하게 중단한다. | 데이터 손상과 원문 유출을 방지한다. |
+| D-041 | unchanged rollout은 fingerprint로 건너뛰고 changed rollout은 처음부터 재계산한 뒤 기존 source event를 제외한다. | 누적 token 기준선 정확성과 반복 수집 성능을 함께 유지한다. |
+| D-042 | 계속 쓰이는 rollout과 손상된 rollout은 cursor를 전진시키지 않고 파일 단위로 격리한다. | 한 파일 때문에 전체 수집을 중단하지 않으면서 손상 데이터를 합계에 넣지 않는다. |
+| D-043 | 첫 기기는 복구 키를 한 번 표시하고, 추가 기기는 숨김 입력으로 가져와 Windows Credential Manager에 저장한다. | 서버 없이 여러 기기가 같은 HMAC ID 공간을 사용해야 한다. |
 
 ## 제안된 결정
 

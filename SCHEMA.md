@@ -327,7 +327,9 @@ quota_snapshots
 read_model_state
 ```
 
-`source_cursors`는 rollout fingerprint, 마지막 byte offset, 마지막 완전 line digest를 저장한다. 원천 파일이 바뀌면 안전하게 앞 구간을 재검사하되 `source_event_id`로 중복을 막는다.
+`source_cursors`는 rollout의 파일 식별정보·크기·수정시각 fingerprint, 마지막 byte offset, 마지막 완전 line digest를 저장한다. fingerprint가 같으면 파싱을 건너뛴다. 파일이 바뀌면 누적 token 기준선의 정확성을 위해 해당 rollout의 완전 line을 처음부터 다시 계산하되 `source_event_id`로 기존 이벤트를 제외한다.
+
+읽기 전후 fingerprint가 다르면 최대 세 번 안정된 snapshot을 시도한다. 계속 쓰이는 파일은 이번 실행에서 제외하고 cursor를 유지한다. 완전한 줄 자체가 손상된 파일도 해당 파일만 격리하고 다른 rollout 수집은 계속한다.
 
 `source_cursors` 갱신과 sanitized event의 `outbox_events` 추가는 하나의 `BEGIN IMMEDIATE` transaction으로 처리한다. 같은 `event_id`와 같은 payload의 재수집은 멱등 처리하고, 같은 ID의 다른 payload는 전체 transaction을 rollback한다.
 

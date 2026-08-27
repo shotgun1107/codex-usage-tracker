@@ -10,6 +10,9 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
 
+[project.scripts]
+codex-usage = "codex_usage.cli:main"
+
 [project.urls]
 Repository = "https://github.com/shotgun1107/codex-usage-tracker"
 

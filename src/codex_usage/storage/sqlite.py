@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path, PurePosixPath, PureWindowsPath
 import sqlite3
+from types import MappingProxyType
 
 from codex_usage.ledger.replay import ReplayResult
 from codex_usage.storage.read_model import (
@@ -156,6 +157,28 @@ class LocalStateStore:
             fingerprint=row["fingerprint"],
             byte_offset=row["byte_offset"],
             last_complete_line_digest=row["last_complete_line_digest"],
+        )
+
+    def all_cursors(self) -> Mapping[str, SourceCursor]:
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                """
+                SELECT source_id, source_path, fingerprint, byte_offset,
+                       last_complete_line_digest
+                FROM source_cursors
+                """
+            ).fetchall()
+        return MappingProxyType(
+            {
+                row["source_id"]: SourceCursor(
+                    source_id=row["source_id"],
+                    source_path=row["source_path"],
+                    fingerprint=row["fingerprint"],
+                    byte_offset=row["byte_offset"],
+                    last_complete_line_digest=row["last_complete_line_digest"],
+                )
+                for row in rows
+            }
         )
 
     def store_collection(
@@ -336,6 +359,28 @@ class LocalStateStore:
             return int(
                 connection.execute("SELECT COUNT(*) FROM parser_issues").fetchone()[0]
             )
+
+    def known_usage_source_event_ids(self) -> frozenset[str]:
+        """Return logical usage IDs already retained in the local outbox history."""
+
+        with closing(self._connect()) as connection:
+            rows = connection.execute(
+                """
+                SELECT payload_json
+                FROM outbox_events
+                WHERE event_type = 'usage_checkpoint'
+                """
+            ).fetchall()
+        source_ids: set[str] = set()
+        for row in rows:
+            try:
+                event = json.loads(row["payload_json"])
+            except json.JSONDecodeError as error:
+                raise LocalStoreError("outbox contains invalid JSON") from error
+            source_id = event.get("source_event_id") if isinstance(event, dict) else None
+            if isinstance(source_id, str) and source_id:
+                source_ids.add(source_id)
+        return frozenset(source_ids)
 
     def rebuild_read_model(self, replay: ReplayResult) -> ReadModelState:
         """Atomically replace disposable query tables from a replay result."""

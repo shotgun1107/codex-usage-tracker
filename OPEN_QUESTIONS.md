@@ -92,6 +92,14 @@
 - 제안: 자동 분할하지 않고 `ambiguous_multi_repo`로 저장한 뒤 수동 지정한다.
 - 완료 기준: 실제 다중 저장소 turn을 만들고 활동 workdir 집합과 토큰 이벤트 순서를 비교한다.
 
+### Q-010. Windows Credential Manager 실사용 acceptance
+
+- 상태: 구현 완료, 자동 호스트 검증 보류
+- 결과: adapter가 Windows API까지 도달했지만 현재 Codex 테스트 호스트에는 interactive logon session이 없어 `WinError 1312`가 발생했다.
+- 안전 처리: 이 환경에서는 secret file로 자동 fallback하지 않고 초기화를 중단한다.
+- 남은 검증: 일반 Windows 데스크톱 터미널에서 `init → 프로세스 재시작 → collect` 후 동일 key ID를 읽는지 확인한다.
+- 완료 기준: 첫 기기 생성과 두 번째 기기 복구 키 import를 실제 Credential Manager에서 확인한다.
+
 ## 해결된 설계 결정
 
 다음 항목은 2026-08-26 사용자 승인으로 확정됐다.

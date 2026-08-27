@@ -107,11 +107,13 @@ class LedgerWriter:
         ledger_root: str | Path,
         device_id: str,
         *,
+        expected_key_id: str | None = None,
         validator: LedgerSchemaValidator | None = None,
         privacy_guard: LedgerPrivacyGuard | None = None,
     ) -> None:
         self.root = Path(ledger_root).expanduser().resolve()
         self.device_id = _canonical_device_id(device_id)
+        self.expected_key_id = expected_key_id
         self.validator = validator or LedgerSchemaValidator.default()
         self.privacy_guard = privacy_guard or LedgerPrivacyGuard()
 
@@ -129,6 +131,11 @@ class LedgerWriter:
             self.privacy_guard.validate(event)
             if event.get("device_id") != self.device_id:
                 raise LedgerIoError("outbox event belongs to another device")
+            if (
+                self.expected_key_id is not None
+                and event.get("key_id") != self.expected_key_id
+            ):
+                raise LedgerIoError("outbox event uses a different HMAC key")
             relative = ledger_relative_path(event, expected_device_id=self.device_id)
             grouped[relative].append((item, _canonical_json(event)))
 

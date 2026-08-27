@@ -213,6 +213,20 @@ class LedgerJsonlIntegrationTests(unittest.TestCase):
                 LedgerWriter(root / "ledger", DEVICE_ID).flush(store)
             self.assertEqual(store.outbox_counts().pending, 1)
 
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            store = LocalStateStore(root / "state.sqlite")
+            wrong_key = usage_event()
+            wrong_key["key_id"] = opaque("key_h1_", "other-key", digest_bytes=16)
+            store.store_collection(source_cursor(), (wrong_key,))
+            with self.assertRaises(LedgerIoError):
+                LedgerWriter(
+                    root / "ledger",
+                    DEVICE_ID,
+                    expected_key_id=KEY_ID,
+                ).flush(store)
+            self.assertEqual(store.outbox_counts().pending, 1)
+
 
 if __name__ == "__main__":
     unittest.main()

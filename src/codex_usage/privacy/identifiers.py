@@ -5,7 +5,9 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+import json
 import secrets
+from collections.abc import Mapping
 
 
 MINIMUM_KEY_BYTES = 32
@@ -98,6 +100,37 @@ def key_id(key: bytes) -> str:
         "",
         "key-id:v1",
         digest_bytes=_KEY_ID_BYTES,
+    )
+
+
+def usage_event_id(
+    key: bytes,
+    logical_source_event_id: str,
+    revision: int,
+    payload_without_event_id: Mapping[str, object],
+) -> str:
+    """Bind one immutable usage revision to its complete sanitized payload."""
+
+    source_id = _validate_value(logical_source_event_id, "logical_source_event_id")
+    if isinstance(revision, bool) or not isinstance(revision, int) or revision < 1:
+        raise IdentifierError("revision must be a positive integer")
+    if "event_id" in payload_without_event_id:
+        raise IdentifierError("payload_without_event_id must not contain event_id")
+    try:
+        canonical = json.dumps(
+            dict(payload_without_event_id),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
+    except (TypeError, ValueError) as error:
+        raise IdentifierError("usage event payload must be canonical JSON") from error
+    return _derive(
+        key,
+        "evt_h1_",
+        "event:v1:",
+        f"{source_id}:{revision}:{canonical}",
     )
 
 
