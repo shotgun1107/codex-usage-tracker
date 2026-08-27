@@ -12,6 +12,7 @@ htmlcov/
 *.sqlite
 *.sqlite-shm
 *.sqlite-wal
+*.sqlite.lock
 .env
 .codex-usage/
 /ledger/

@@ -1,0 +1,1 @@
+"""Private Git ledger synchronization."""

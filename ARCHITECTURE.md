@@ -156,11 +156,12 @@ sequenceDiagram
     S->>G: commit own device changes
     G->>R: fetch
     S->>G: rebase local commit
-    G->>R: push
     alt conflict or rejection
         S-->>U: stop without auto-resolution
     else success
+        S->>P: validate merged ledger again
         S->>I: replay all device events
+        G->>R: push
         I-->>U: synchronized summary
     end
 ```
@@ -343,10 +344,10 @@ tests/
 5. ✅ ledger JSONL writer·reader·JSON Schema·privacy validation
 6. ✅ CLI init·collect·doctor
 7. ✅ report table·Markdown
-8. ⏳ Git sync
+8. ✅ Git sync
 9. ⏳ quota 보조 수집
 
-다음 구현 단위는 8번인 비공개 장부 Git sync다. revision·alias·manual mapping replay core는 4번과 함께 구현됐다.
+다음 구현 단위는 9번인 quota 보조 수집이다. revision·alias·manual mapping replay core는 4번과 함께 구현됐다.
 
 ## ADR 목록
 
@@ -356,3 +357,4 @@ tests/
 - [ADR-004: HMAC 비식별화와 로컬 secret](docs/adr/0004-hmac-identifiers.md)
 - [ADR-005: turn 단위 프로젝트 귀속과 lifecycle 중복 제거](docs/adr/0005-turn-attribution-and-dedup.md)
 - [ADR-006: 재생성 가능한 SQLite read model](docs/adr/0006-rebuildable-read-model.md)
+- [ADR-007: fail-closed Git 장부 동기화](docs/adr/0007-fail-closed-git-sync.md)

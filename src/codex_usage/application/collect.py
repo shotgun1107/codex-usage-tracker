@@ -9,6 +9,7 @@ from types import MappingProxyType
 
 from codex_usage import __version__
 from codex_usage.application.project_attribution import ProjectAttributionEngine
+from codex_usage.application.lock import ApplicationLock
 from codex_usage.config import AppConfig
 from codex_usage.domain.lifecycle import (
     DuplicateCheckpointConflict,
@@ -91,6 +92,10 @@ class CollectService:
         )
 
     def collect(self) -> CollectResult:
+        with ApplicationLock(self.config.state_db):
+            return self._collect()
+
+    def _collect(self) -> CollectResult:
         store = LocalStateStore(self.config.state_db)
         reader = LedgerReader(self.config.ledger_root)
         ledger_before = reader.read_all()

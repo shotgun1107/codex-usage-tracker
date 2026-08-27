@@ -5,9 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
-import shutil
 import sqlite3
-import subprocess
 
 from codex_usage.application.collect import find_codex_state_database
 from codex_usage.config import AppConfig
@@ -16,6 +14,7 @@ from codex_usage.ledger.schema_validation import LedgerSchemaError
 from codex_usage.privacy.guard import PrivacyViolation
 from codex_usage.privacy.identifiers import key_id
 from codex_usage.sources.rollout_files import discover_rollout_files
+from codex_usage.sync.git import GitLedgerRepository, GitSyncError
 
 
 class CheckStatus(StrEnum):
@@ -147,27 +146,24 @@ def _check_local_sqlite(path: Path) -> DoctorCheck:
 
 
 def _check_git_repository(path: Path) -> DoctorCheck:
-    executable = shutil.which("git")
-    if executable is None:
-        return DoctorCheck("ledger-git", CheckStatus.ERROR, "Git is not installed")
-    creation_flags = subprocess.CREATE_NO_WINDOW if hasattr(subprocess, "CREATE_NO_WINDOW") else 0
     try:
-        result = subprocess.run(
-            [executable, "-C", str(path), "rev-parse", "--is-inside-work-tree"],
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-            timeout=5,
-            creationflags=creation_flags,
+        branch = GitLedgerRepository(path, timeout_seconds=5).validate()
+    except GitSyncError as error:
+        if error.code in {"git_not_found"}:
+            return DoctorCheck("ledger-git", CheckStatus.ERROR, "Git is not installed")
+        if error.code in {"git_rev-parse_failed", "ledger_not_git_repository"}:
+            return DoctorCheck(
+                "ledger-git",
+                CheckStatus.WARNING,
+                "ledger is not a Git repository yet",
+            )
+        return DoctorCheck(
+            "ledger-git",
+            CheckStatus.ERROR,
+            f"Git sync is not ready ({error.code})",
         )
-    except (OSError, subprocess.TimeoutExpired):
-        return DoctorCheck("ledger-git", CheckStatus.ERROR, "Git check failed")
-    if result.returncode == 0 and result.stdout.strip() == "true":
-        return DoctorCheck("ledger-git", CheckStatus.OK, "ledger is a Git repository")
     return DoctorCheck(
         "ledger-git",
-        CheckStatus.WARNING,
-        "ledger is not a Git repository yet",
+        CheckStatus.OK,
+        f"Git sync is ready on {branch}",
     )

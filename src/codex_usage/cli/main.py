@@ -1,4 +1,4 @@
-"""User-facing init, collect, and doctor commands."""
+"""User-facing init, collect, sync, report, and doctor commands."""
 
 from __future__ import annotations
 
@@ -16,6 +16,8 @@ from zoneinfo import ZoneInfo
 from codex_usage import __version__
 from codex_usage.application.collect import CollectError, CollectService
 from codex_usage.application.doctor import CheckStatus, run_doctor
+from codex_usage.application.lock import ApplicationLockError
+from codex_usage.application.sync import SyncError, SyncService
 from codex_usage.config import (
     AppConfig,
     ConfigError,
@@ -42,10 +44,12 @@ from codex_usage.secret_store import (
     encode_recovery_key,
 )
 from codex_usage.storage.sqlite import LocalStateStore, LocalStoreError
+from codex_usage.sync.git import GitSyncError
 
 
 _EXPECTED_ERRORS = (
     CollectError,
+    ApplicationLockError,
     ConfigError,
     LedgerIoError,
     LedgerReplayError,
@@ -54,6 +58,8 @@ _EXPECTED_ERRORS = (
     PrivacyViolation,
     ReportError,
     SecretStoreError,
+    SyncError,
+    GitSyncError,
 )
 
 
@@ -91,6 +97,8 @@ def main(
             raise SecretStoreError("shared key is missing from Credential Manager")
         if arguments.command == "collect":
             return _run_collect(config, shared_key, output)
+        if arguments.command == "sync":
+            return _run_sync(config, shared_key, output)
         if arguments.command == "doctor":
             return _run_doctor(config, shared_key, output)
         parser.error("unknown command")
@@ -133,6 +141,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
 
     commands.add_parser("collect", help="collect and flush Codex token usage")
+    commands.add_parser("sync", help="synchronize the private Git ledger")
     commands.add_parser("doctor", help="run read-only environment diagnostics")
     report = commands.add_parser("report", help="show project token usage")
     report.add_argument("--from", dest="from_date", help="first local date YYYY-MM-DD")
@@ -239,6 +248,23 @@ def _run_doctor(config: AppConfig, shared_key: bytes, output: TextIO) -> int:
     for check in result.checks:
         print(f"[{labels[check.status]}] {check.name}: {check.message}", file=output)
     return 2 if result.has_errors else 0
+
+
+def _run_sync(config: AppConfig, shared_key: bytes, output: TextIO) -> int:
+    result = SyncService(config, shared_key).sync()
+    print(
+        "동기화 완료: "
+        f"브랜치 {result.branch}, 변경 파일 {result.changed_files}, "
+        f"로컬 커밋 {'생성' if result.commit_created else '없음'}, "
+        f"푸시 {'완료' if result.pushed else '불필요'}",
+        file=output,
+    )
+    print(
+        f"통합 장부 이벤트 {result.ledger_event_count}, "
+        f"조회 DB generation {result.read_model_state.generation}",
+        file=output,
+    )
+    return 0
 
 
 def _run_report(

@@ -360,6 +360,47 @@ class LocalStateStore:
                 connection.execute("SELECT COUNT(*) FROM parser_issues").fetchone()[0]
             )
 
+    def begin_sync_run(self) -> int:
+        """Record a local sync attempt without placing secrets in diagnostics."""
+
+        with closing(self._connect()) as connection:
+            cursor = connection.execute(
+                """
+                INSERT INTO sync_runs (started_at, status)
+                VALUES (?, 'running')
+                """,
+                (_utc_now(),),
+            )
+            return int(cursor.lastrowid)
+
+    def finish_sync_run(
+        self,
+        run_id: int,
+        status: str,
+        detail_code: str | None = None,
+    ) -> None:
+        """Finish one known sync run as succeeded or failed."""
+
+        if isinstance(run_id, bool) or not isinstance(run_id, int) or run_id < 1:
+            raise ValueError("run_id must be a positive integer")
+        if status not in {"succeeded", "failed"}:
+            raise ValueError("sync status must be succeeded or failed")
+        if detail_code is not None and (
+            not isinstance(detail_code, str) or not detail_code
+        ):
+            raise ValueError("detail_code must be a non-empty string or None")
+        with closing(self._connect()) as connection:
+            cursor = connection.execute(
+                """
+                UPDATE sync_runs
+                SET finished_at = ?, status = ?, detail_code = ?
+                WHERE run_id = ? AND status = 'running'
+                """,
+                (_utc_now(), status, detail_code, run_id),
+            )
+            if cursor.rowcount != 1:
+                raise LocalStoreError("sync run is missing or already finished")
+
     def known_usage_source_event_ids(self) -> frozenset[str]:
         """Return logical usage IDs already retained in the local outbox history."""
 

@@ -18,7 +18,8 @@
 - 기기별 append-only JSONL writer와 partial-line 내성 reader
 - 체크인된 JSON Schema 검증과 경로·remote·raw ID 개인정보 guard
 - Windows Credential Manager 기반 공유 HMAC 키 보관
-- 변경 rollout 감지와 `init·collect·doctor` CLI
+- 변경 rollout 감지와 `init·collect·sync·report·doctor` CLI
+- 기기별 변경 경계·append-only 검증을 적용한 fail-closed Git 동기화
 - 표준 라이브러리 기반 단위 테스트
 
 Codex 대화·코드·명령·로컬 경로·raw remote는 중앙 장부에 저장하지 않는 것을 원칙으로 합니다. 공개 소스 저장소와 사용자별 비공개 데이터 장부는 분리합니다.
@@ -43,14 +44,17 @@ codex-usage init --ledger C:\path\to\private-ledger
 codex-usage init --ledger C:\path\to\private-ledger --import-key
 ```
 
-수집과 진단:
+수집, 장부 동기화, 진단:
 
 ```powershell
 codex-usage collect
+codex-usage sync
 codex-usage doctor
 ```
 
 `collect`는 변경되지 않은 rollout을 건너뛰고, 변경된 rollout만 누적 기준선부터 다시 계산한 뒤 이미 저장된 `source_event_id`를 제외합니다. 손상됐거나 계속 쓰이는 파일은 cursor를 전진시키지 않고 다음 실행에서 재시도합니다.
+
+`sync`는 자기 기기의 `devices/<device-id>/` 아래에 추가된 JSONL만 커밋합니다. 전체 장부의 schema·privacy·HMAC key를 검사한 뒤 `fetch → rebase → replay → push`하며, 충돌·과거 줄 수정·다른 경로 변경은 자동 해결하지 않고 중단합니다. 전송 실패 시 로컬 커밋은 다음 재시도를 위해 보존됩니다.
 
 프로젝트·날짜별 사용량을 조회하거나 Markdown으로 남깁니다.
 
@@ -69,7 +73,7 @@ codex-usage report --markdown reports\usage.md
 python -m unittest discover -s tests -t . -v
 ```
 
-현재 자동 테스트 132개 중 131개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
+현재 자동 테스트 141개 중 140개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
 
 ## 문서
 
