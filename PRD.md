@@ -230,7 +230,7 @@ codex-usage doctor
 - unclassified·ambiguous 이벤트 수
 - 파서 경고와 마지막 성공 수집 시각
 
-### FR-013. 한도 보조 정보
+### FR-013. 한도 보조 정보 — v1 핵심 완성 이후
 
 - Codex가 직접 제공한 사용률·reset 시각만 quota snapshot으로 저장한다.
 - 토큰 합계에서 한도 소모율을 계산하지 않는다.
@@ -262,6 +262,7 @@ codex-usage doctor
 
 ## v1 이후
 
+- Codex가 직접 보고한 구독 한도·reset 시각 보조 수집
 - 주기 실행과 Codex 종료 연동 자동 수집
 - 로컬 웹 또는 데스크톱 대시보드
 - Codex 채팅 여백의 현재 프로젝트 사용량 UI
