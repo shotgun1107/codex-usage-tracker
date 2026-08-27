@@ -449,6 +449,22 @@ remote 변경: alias 이벤트로 과거·현재 연결
 
 구현 과정에서 Python SQLite context manager가 connection 자체를 닫지 않아 Windows 임시 DB 파일이 잠기는 문제를 테스트가 발견했다. 모든 조회 connection을 명시적으로 close하도록 수정한 뒤 파일 잠금 없이 통과했다.
 
+## Build 검증: JSONL ledger와 privacy boundary (2026-08-27)
+
+SQLite outbox에서 기기별 장부 파일로 기록하고 다시 replay·read model까지 연결하는 합성 end-to-end 검증을 수행했다.
+
+- usage는 `devices/<uuid>/usage/YYYY/MM/DD.jsonl`, mapping은 월별, quota는 일별 파일로 분리
+- 완전한 canonical JSON line을 `fsync`한 뒤에만 outbox flushed 처리
+- 파일 `fsync` 후 DB 갱신 전에 강제 종료한 상황에서 재실행 시 append 0건, existing 1건으로 중복 방지
+- 마지막 불완전 line은 reader에서 제외하고 writer가 마지막 LF까지만 보존한 뒤 pending event 재기록
+- 완전하지만 잘못된 JSON, event 날짜·종류와 맞지 않는 경로, 같은 ID의 다른 payload는 fail-closed
+- 다른 device ID의 outbox event는 자기 기기 경로에 쓰지 않음
+- 체크인된 JSON Schema로 usage·mapping·quota의 필수 필드·타입·범위·추가 필드 검증
+- 외부 runtime dependency 없이 wheel을 빌드하고 JSON Schema가 배포 데이터에 포함됨을 확인
+- schema-valid 문자열이라도 raw project ID, Windows·POSIX 경로, URL·SSH remote, 금지 원문 필드는 privacy guard에서 차단
+
+reader가 안전을 위해 반환한 read-only mapping을 replay가 직렬화하지 못하는 연결 오류도 end-to-end 테스트에서 발견했다. replay 입구에서 일반 JSON object로 정규화하도록 수정했다.
+
 ## 토큰 의미
 
 ```text

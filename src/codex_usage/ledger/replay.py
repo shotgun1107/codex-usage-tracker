@@ -174,7 +174,7 @@ def _normalize_event(
         raise LedgerReplayError("ledger event must be an object")
     try:
         canonical = json.dumps(
-            event,
+            dict(event),
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),

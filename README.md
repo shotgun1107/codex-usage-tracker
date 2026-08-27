@@ -15,6 +15,8 @@
 - crash-safe source cursor·SQLite outbox
 - revision·void·manual mapping·alias를 적용하는 결정적 ledger replay
 - 실패 시 직전 세대를 보존하는 SQLite read model 재생성
+- 기기별 append-only JSONL writer와 partial-line 내성 reader
+- 체크인된 JSON Schema 검증과 경로·remote·raw ID 개인정보 guard
 - 표준 라이브러리 기반 단위 테스트
 
 Codex 대화·코드·명령·로컬 경로·raw remote는 중앙 장부에 저장하지 않는 것을 원칙으로 합니다. 공개 소스 저장소와 사용자별 비공개 데이터 장부는 분리합니다.
@@ -25,7 +27,7 @@ Codex 대화·코드·명령·로컬 경로·raw remote는 중앙 장부에 저�
 python -m unittest discover -s tests -t . -v
 ```
 
-현재 단위·통합 테스트 92개와 로컬 rollout 전체 익명 구조 검사를 통과했습니다. 2026-08-26 스냅샷에서 54,004개 logical checkpoint 중 43,989개를 자동 귀속했고, 근거가 부족한 10,015개는 추측하지 않고 미분류했습니다.
+현재 단위·통합 테스트 105개와 로컬 rollout 전체 익명 구조 검사를 통과했습니다. 2026-08-26 스냅샷에서 54,004개 logical checkpoint 중 43,989개를 자동 귀속했고, 근거가 부족한 10,015개는 추측하지 않고 미분류했습니다.
 
 ## 문서
 

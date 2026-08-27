@@ -303,6 +303,10 @@ ledger/
 - 장부 파일은 append-only다.
 - v1에서는 삭제·압축·롤업하지 않는다.
 - 정렬 순서는 신뢰하지 않고 replay 시 `occurred_at`, logical key, revision을 사용한다.
+- writer는 완전한 UTF-8 JSON 한 줄과 LF를 기록하고 `fsync`한 뒤에만 outbox를 flushed 처리한다.
+- 파일 기록 후 outbox 갱신 전에 종료되면 재실행 시 같은 경로의 `event_id`와 canonical payload를 비교해 중복 append를 막는다.
+- crash로 마지막 줄이 불완전하면 reader는 그 줄을 무시한다. 자기 기기 writer는 마지막 LF 이후의 불완전 byte만 제거하고 pending outbox에서 다시 기록한다.
+- event의 `device_id`, UTC 날짜, `event_type`과 실제 상대 경로가 일치하지 않으면 읽기와 쓰기를 중단한다.
 
 ## 로컬 상태 DB
 
@@ -347,8 +351,9 @@ replay는 입력 파일과 line 순서를 신뢰하지 않는다. 같은 장부 
 
 ## 스키마 검증 조건
 
-- JSON Schema로 모든 event line을 검증한다.
-- 금지 필드와 경로·remote URL 패턴을 장부 커밋 전에 검사한다.
+- 체크인된 Draft 2020-12 JSON Schema로 모든 event line을 쓰기 전과 읽기 후에 검증한다.
+- HMAC ID 접두사와 금지 필드, Windows·POSIX 절대경로, URL·SSH remote 패턴을 장부 기록 전에 검사한다.
+- `event_id`, project·thread·turn·source·key 식별자가 raw 값이면 스키마를 통과하더라도 privacy guard가 차단한다.
 - 합성 fixture로 신규·resume·fork·compact·worktree·submodule·monorepo·remote 변경을 재현한다.
 - 장부를 세 번 replay해도 결과가 동일해야 한다.
 - 다른 기기 파일 순서로 읽어도 결과가 동일해야 한다.
