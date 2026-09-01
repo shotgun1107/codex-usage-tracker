@@ -4,7 +4,7 @@
 
 ```powershell
 python -m unittest discover -s tests -t .
-python -m pip wheel --no-deps --no-build-isolation . --wheel-dir dist
+python -m pip wheel --no-deps . --wheel-dir dist
 ```
 
 새 가상환경에 wheel을 설치한 뒤 다음 항목을 확인한다.
@@ -57,3 +57,10 @@ python scripts\private_github_smoke.py --remote https://github.com/<owner>/<priv
 - `OPEN_QUESTIONS.md`의 실사용 검증 결과를 갱신한다.
 - version과 changelog를 확정한 뒤 tag를 만든다.
 - 한도·reset 수집은 핵심 v1 출시 이후 별도 단위로 진행한다.
+
+## 0.1.0 검증 결과
+
+- Windows 사용자 세션 Credential Manager 테스트: 통과
+- 비공개 GitHub 합성 장부 smoke: 통과, 합계 123, 임시 브랜치 삭제 확인
+- 로컬 전체 테스트: 159개 중 158개 통과, 자동 환경 Credential 테스트 1개 skip
+- GitHub Actions: Windows·Ubuntu 전체 테스트와 wheel 생성 통과
