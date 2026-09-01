@@ -92,5 +92,5 @@ flowchart LR
 - [x] CLI collect·doctor·report·sync
 - [x] project list·unresolved·link·alias
 - [x] 로컬 bare remote 기반 다기기 acceptance
-- [ ] 실제 Windows Credential Manager acceptance
-- [ ] 비공개 GitHub 합성 장부 smoke
+- [x] 실제 Windows Credential Manager acceptance
+- [x] 비공개 GitHub 합성 장부 smoke

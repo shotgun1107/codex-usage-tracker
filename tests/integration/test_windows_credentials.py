@@ -12,6 +12,10 @@ from codex_usage.secret_store import (
 
 
 @unittest.skipUnless(os.name == "nt", "Windows Credential Manager integration")
+@unittest.skipIf(
+    os.environ.get("CI", "").lower() == "true",
+    "requires an interactive Windows user session",
+)
 class WindowsCredentialStoreIntegrationTests(unittest.TestCase):
     def test_temporary_secret_round_trip_and_cleanup(self) -> None:
         store = WindowsCredentialStore()

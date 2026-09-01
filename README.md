@@ -95,7 +95,7 @@ codex-usage sync
 python -m unittest discover -s tests -t . -v
 ```
 
-현재 자동 테스트 156개 중 155개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 로컬 bare remote 기반 수용 테스트에서는 두 기기의 수집·동기화·수동 연결·보고와 새 clone의 DB 재생성을 확인했습니다. wheel을 소스 checkout 밖의 새 가상환경에 설치해 version·schema·CLI entrypoint를 검증했습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
+현재 자동 테스트 159개 중 158개를 통과했고 1개는 자동 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 일반 Windows 사용자 PowerShell에서는 Credential Manager 왕복 테스트가 별도로 통과했습니다. 로컬 bare remote 기반 수용 테스트에서는 두 기기의 수집·동기화·수동 연결·보고와 새 clone의 DB 재생성을 확인했습니다. 실제 비공개 GitHub에서는 합성 이벤트의 push·clean clone 재생성·doctor 검사와 임시 브랜치 삭제가 통과했습니다. wheel을 소스 checkout 밖의 새 가상환경에 설치해 version·schema·CLI entrypoint를 검증했습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
 
 ## 문서
 

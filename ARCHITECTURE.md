@@ -347,10 +347,10 @@ tests/
 8. ✅ Git sync
 9. ✅ project list·manual link·alias CLI
 10. ✅ doctor 보강·다기기 end-to-end 수용 검증
-11. 🚧 wheel 설치·CI 완료, 실제 Credential Manager·비공개 GitHub smoke 보류
+11. 🚧 wheel·Credential Manager·비공개 GitHub smoke 완료, CI 수정 검증 중
 12. ⏸️ 핵심 프로그램 완성 후 quota 보조 수집
 
-다음 재개 조건은 일반 Windows 사용자 세션의 Credential Manager 테스트와 네트워크가 허용된 `gh` 재인증이다. 한도와 초기화 시각은 이 검증과 핵심 프로그램 완성이 끝난 뒤 추가한다.
+다음 완료 조건은 수정된 Windows·Linux CI의 통과다. 한도와 초기화 시각은 핵심 프로그램의 v1 검증을 마친 뒤 추가한다.
 
 ## ADR 목록
 

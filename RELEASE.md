@@ -41,6 +41,14 @@ python -m unittest tests.integration.test_windows_credentials -v
 - 세 번째 clean clone에서 `sync`만으로 조회 DB를 재생성해야 한다.
 - `doctor`의 `ledger-remote`, `read-model`, `classification`이 `OK`여야 한다.
 
+이미 초기 commit이 있는 비공개 저장소에서 다음 합성 smoke를 실행할 수 있다. 스크립트는 저장소 공개 여부를 먼저 검사하고, 임시 브랜치만 생성·검증한 뒤 삭제한다.
+
+```powershell
+python scripts\private_github_smoke.py --remote https://github.com/<owner>/<private-repo>.git
+```
+
+공개 저장소와 이 프로젝트의 소스 저장소는 입력으로 거부한다. 실패 후 임시 브랜치 정리 오류가 표시되면 출력된 정확한 브랜치만 수동으로 삭제한다.
+
 ## 정리와 출시
 
 - 로컬 smoke가 만든 `.tmp-release-smoke`는 검증 후 `Remove-Item -LiteralPath .\.tmp-release-smoke -Recurse -Force`로 정리한다.

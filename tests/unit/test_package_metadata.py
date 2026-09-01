@@ -35,6 +35,16 @@ class PackageMetadataTests(unittest.TestCase):
         )
         self.assertTrue((ROOT / "schemas" / "ledger-event-v1.schema.json").is_file())
 
+    def test_ci_uses_current_actions_and_isolated_wheel_build(self) -> None:
+        workflow = (ROOT / ".github" / "workflows" / "ci.yml").read_text(
+            encoding="utf-8"
+        )
+
+        self.assertIn("actions/checkout@v7", workflow)
+        self.assertIn("actions/setup-python@v7", workflow)
+        self.assertIn("python -m pip wheel --no-deps . --wheel-dir dist", workflow)
+        self.assertNotIn("--no-build-isolation . --wheel-dir dist", workflow)
+
 
 if __name__ == "__main__":
     unittest.main()
