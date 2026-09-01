@@ -17,3 +17,4 @@ htmlcov/
 .codex-usage/
 /ledger/
 /reports/
+/.tmp-release-smoke/

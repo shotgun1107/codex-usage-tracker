@@ -347,10 +347,10 @@ tests/
 8. ✅ Git sync
 9. ✅ project list·manual link·alias CLI
 10. ✅ doctor 보강·다기기 end-to-end 수용 검증
-11. ⏳ 실제 Windows 설치·Credential Manager·비공개 GitHub smoke test와 v1 release hardening
+11. 🚧 wheel 설치·CI 완료, 실제 Credential Manager·비공개 GitHub smoke 보류
 12. ⏸️ 핵심 프로그램 완성 후 quota 보조 수집
 
-다음 단위는 11번인 실제 Windows 환경 smoke test와 v1 release hardening이다. 한도와 초기화 시각은 이 검증과 핵심 프로그램 완성이 끝난 뒤 추가한다.
+다음 재개 조건은 일반 Windows 사용자 세션의 Credential Manager 테스트와 네트워크가 허용된 `gh` 재인증이다. 한도와 초기화 시각은 이 검증과 핵심 프로그램 완성이 끝난 뒤 추가한다.
 
 ## ADR 목록
 

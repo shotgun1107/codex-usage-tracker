@@ -28,7 +28,13 @@ Codex 대화·코드·명령·로컬 경로·raw remote는 중앙 장부에 저�
 
 ## 현재 CLI 사용법
 
-개발 버전을 설치합니다.
+일반 설치:
+
+```powershell
+python -m pip install .
+```
+
+개발용 editable 설치:
 
 ```powershell
 python -m pip install -e .
@@ -89,7 +95,7 @@ codex-usage sync
 python -m unittest discover -s tests -t . -v
 ```
 
-현재 자동 테스트 154개 중 153개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 로컬 bare remote 기반 수용 테스트에서는 두 기기의 수집·동기화·수동 연결·보고와 새 clone의 DB 재생성을 확인했습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
+현재 자동 테스트 156개 중 155개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 로컬 bare remote 기반 수용 테스트에서는 두 기기의 수집·동기화·수동 연결·보고와 새 clone의 DB 재생성을 확인했습니다. wheel을 소스 checkout 밖의 새 가상환경에 설치해 version·schema·CLI entrypoint를 검증했습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
 
 ## 문서
 
@@ -99,3 +105,5 @@ python -m unittest discover -s tests -t . -v
 - [v1 아키텍처](ARCHITECTURE.md)
 - [결정 기록](DECISIONS.md)
 - [자료조사](RESEARCH.md)
+- [변경 기록](CHANGELOG.md)
+- [v1 release smoke checklist](RELEASE.md)

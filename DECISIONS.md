@@ -54,6 +54,7 @@
 | D-047 | 구독 한도와 초기화 시각 수집은 v1 핵심 프로그램 구현과 수용 검증이 끝난 뒤 추가한다. | 프로젝트별 실제 토큰 추적과 수동 분류·진단 완성을 우선한다. |
 | D-048 | 수동 thread·turn 연결과 project alias는 기기별 mapping 이벤트로 기록한다. 원본 thread·turn ID는 로컬 입력에서 즉시 HMAC 처리하고, 반복 연결은 멱등 처리하며 변경은 revision으로 보존한다. | 미분류 사용량을 실제 프로젝트에 연결하면서 개인정보 경계와 append-only 이력을 유지한다. |
 | D-049 | doctor는 원격 변경 없이 JSONL/SQLite join, 관측 버전, parser issue, run history, outbox, 미분류, read model 일치와 Git 원격 읽기 권한을 검사한다. 출력은 개수·시각·고정 오류 코드로 제한한다. | 실제 운영 문제를 진단하면서 로컬 경로·remote·원본 ID 노출을 막는다. |
+| D-050 | 배포 version은 `codex_usage.__version__`을 단일 원천으로 사용하고 Windows·Linux CI에서 전체 테스트와 wheel 빌드를 수행한다. release 전에 소스 checkout 밖의 격리 설치를 검증한다. | 소스 실행과 실제 설치물의 차이 및 version 불일치를 조기에 발견한다. |
 
 ## 제안된 결정
 

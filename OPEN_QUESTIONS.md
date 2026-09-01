@@ -96,9 +96,18 @@
 
 - 상태: 구현 완료, 자동 호스트 검증 보류
 - 결과: adapter가 Windows API까지 도달했지만 현재 Codex 테스트 호스트에는 interactive logon session이 없어 `WinError 1312`가 발생했다.
+- 2026-09-01 재검증: wheel 설치 후에도 자동 실행 계정에서는 동일하게 skip됐다. computer-use 안전 규칙상 터미널 UI 우회 실행은 하지 않는다.
 - 안전 처리: 이 환경에서는 secret file로 자동 fallback하지 않고 초기화를 중단한다.
 - 남은 검증: 일반 Windows 데스크톱 터미널에서 `init → 프로세스 재시작 → collect` 후 동일 key ID를 읽는지 확인한다.
 - 완료 기준: 첫 기기 생성과 두 번째 기기 복구 키 import를 실제 Credential Manager에서 확인한다.
+
+### Q-011. 비공개 GitHub 실제 원격 smoke
+
+- 상태: 로컬 bare remote acceptance와 wheel 격리 설치 완료, 실제 GitHub만 보류
+- 2026-09-01 결과: `gh`의 기존 `shotgun1107` 토큰이 만료됐고, 재인증 device-code 요청은 현재 샌드박스의 외부 네트워크 차단으로 시작되지 않았다.
+- 안전 처리: 공개 소스 저장소에 장부를 올리거나 실제 회사 로그로 대체 검증하지 않는다.
+- 남은 검증: 네트워크가 허용된 사용자 PowerShell에서 `gh auth login -h github.com` 후 합성 rollout만 사용하는 비공개 장부 smoke를 실행한다.
+- 완료 기준: 두 clone의 sync와 세 번째 clean clone의 DB 재생성, `doctor` 원격·read-model 검사가 모두 통과한다.
 
 ## 해결된 설계 결정
 

@@ -4,23 +4,35 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "codex-usage-tracker"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Local-first Codex token usage tracking by Git project"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = []
+keywords = ["codex", "token-usage", "local-first", "git"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+]
 
 [project.scripts]
 codex-usage = "codex_usage.cli:main"
 
 [project.urls]
 Repository = "https://github.com/shotgun1107/codex-usage-tracker"
+Issues = "https://github.com/shotgun1107/codex-usage-tracker/issues"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = {attr = "codex_usage.__version__"}
 
 [tool.setuptools.data-files]
 "share/codex-usage-tracker/schemas" = ["schemas/ledger-event-v1.schema.json"]

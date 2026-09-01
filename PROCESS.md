@@ -75,11 +75,10 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    A["기반 정리"] --> B["Discover"] --> C["브리프 v0.4 승인"] --> D["Shape & Spike 완료"] --> E["Plan 완료"] --> F["Design 승인"] --> G["Build 진행 중"]
-    G -. "완성 단위 검증" .-> H["Validate"]
+    A["기반 정리"] --> B["Discover"] --> C["브리프 v0.4 승인"] --> D["Shape & Spike 완료"] --> E["Plan 완료"] --> F["Design 승인"] --> G["Build 완료"] --> H["v1 Validate 진행 중"]
 ```
 
-설계와 ADR이 승인돼 Build 단계에 진입했다.
+핵심 Build를 완료하고 실제 Windows·비공개 GitHub 환경의 v1 Validate를 진행한다.
 
 ## Build 진행
 
@@ -88,6 +87,10 @@ flowchart LR
 - [x] Git remote 정규화와 origin·unique·ambiguous 선택
 - [x] 첫 단위 테스트
 - [x] JSONL token parser와 lifecycle delta
-- [ ] SQLite lineage adapter와 project attribution
-- [ ] outbox·ledger·read model
-- [ ] CLI collect·doctor·report·sync
+- [x] SQLite lineage adapter와 project attribution
+- [x] outbox·ledger·read model
+- [x] CLI collect·doctor·report·sync
+- [x] project list·unresolved·link·alias
+- [x] 로컬 bare remote 기반 다기기 acceptance
+- [ ] 실제 Windows Credential Manager acceptance
+- [ ] 비공개 GitHub 합성 장부 smoke
