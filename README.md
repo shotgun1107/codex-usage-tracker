@@ -21,6 +21,7 @@
 - 변경 rollout 감지와 `init·collect·sync·report·doctor` CLI
 - 기기별 변경 경계·append-only 검증을 적용한 fail-closed Git 동기화
 - 프로젝트 목록·미분류 조회와 append-only 수동 연결·별칭 CLI
+- JSONL/SQLite join·버전·분류·이력·원격 권한을 확인하는 확장 doctor
 - 표준 라이브러리 기반 단위 테스트
 
 Codex 대화·코드·명령·로컬 경로·raw remote는 중앙 장부에 저장하지 않는 것을 원칙으로 합니다. 공개 소스 저장소와 사용자별 비공개 데이터 장부는 분리합니다.
@@ -80,13 +81,15 @@ codex-usage sync
 
 `project unresolved`는 이 기기의 Codex SQLite에서 원본 thread ID를 찾을 수 있을 때만 로컬 화면에 표시합니다. `project link`는 입력받은 원본 ID를 즉시 HMAC 식별자로 바꾸며 Git 장부에는 원본 ID를 기록하지 않습니다. 같은 연결은 멱등 처리하고, 연결 변경은 이전 mapping을 가리키는 새 revision으로 보존합니다.
 
+`doctor`는 Codex JSONL·SQLite 조인, 관측 CLI 버전, 파서 경고, 마지막 수집·동기화 상태, pending outbox, 미분류 작업, 장부와 조회 DB 일치 여부, Git 원격 읽기 권한을 검사합니다. 진단 메시지에는 경로·remote·원본 thread ID를 표시하지 않습니다.
+
 ## 테스트
 
 ```powershell
 python -m unittest discover -s tests -t . -v
 ```
 
-현재 자동 테스트 148개 중 147개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
+현재 자동 테스트 154개 중 153개를 통과했고 1개는 테스트 호스트의 Windows 로그온 세션 부재로 skip됐습니다. 로컬 bare remote 기반 수용 테스트에서는 두 기기의 수집·동기화·수동 연결·보고와 새 clone의 DB 재생성을 확인했습니다. 실제 로컬 익명 검증에서는 사용량 이벤트 56,208개를 70개 프로젝트·날짜 행으로 집계하고 터미널·Markdown 보고서를 0.628초에 생성했습니다.
 
 ## 문서
 

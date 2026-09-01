@@ -1,6 +1,6 @@
 """SQLite schema for local operational state and disposable query data."""
 
-DATABASE_VERSION = 1
+DATABASE_VERSION = 2
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS source_cursors (
@@ -32,6 +32,14 @@ CREATE TABLE IF NOT EXISTS parser_issues (
     cli_version TEXT NOT NULL,
     first_seen_at TEXT NOT NULL,
     UNIQUE(source_id, code, record_position, cli_version)
+);
+
+CREATE TABLE IF NOT EXISTS collect_runs (
+    run_id INTEGER PRIMARY KEY AUTOINCREMENT,
+    started_at TEXT NOT NULL,
+    finished_at TEXT,
+    status TEXT NOT NULL,
+    detail_code TEXT
 );
 
 CREATE TABLE IF NOT EXISTS sync_runs (

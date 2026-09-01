@@ -318,6 +318,7 @@ Git에 올리지 않는 SQLite는 operational state와 재생성 가능한 read 
 source_cursors
 outbox_events
 parser_issues
+collect_runs
 sync_runs
 
 # rebuildable read model
@@ -338,7 +339,7 @@ read_model_state
 
 `read_model_state.generation`은 성공한 원자적 재생성마다 증가한다. 재생성 중 validation·constraint 오류가 발생하면 usage·mapping·alias·quota 테이블 전체를 직전 generation으로 rollback한다.
 
-`sync_runs`는 각 동기화 시도의 시작·종료 시각과 `running`·`succeeded`·`failed` 상태를 로컬에만 기록한다. 실패 상세는 민감한 Git 출력이나 URL 대신 고정된 오류 코드만 저장한다.
+`collect_runs`와 `sync_runs`는 각 수집·동기화 시도의 시작·종료 시각과 `running`·`succeeded`·`failed` 상태를 로컬에만 기록한다. 실패 상세는 민감한 경로·Git 출력·URL 대신 고정된 오류 코드만 저장한다.
 
 ## correction과 replay
 

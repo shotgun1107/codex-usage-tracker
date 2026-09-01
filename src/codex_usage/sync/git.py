@@ -119,6 +119,13 @@ class GitLedgerRepository:
     def fetch(self) -> None:
         self._run("fetch", "--prune", "origin")
 
+    def check_remote_access(self) -> None:
+        """Verify read access without updating refs or the worktree."""
+
+        result = self._run("ls-remote", "--heads", "origin", check=False)
+        if result.returncode != 0:
+            raise GitSyncError("git_remote_access_failed")
+
     def remote_branch_exists(self, branch: str) -> bool:
         result = self._run(
             "show-ref",

@@ -205,6 +205,76 @@ class LocalStateStoreTests(unittest.TestCase):
             with self.assertRaises(UnsupportedDatabaseVersion):
                 LocalStateStore(future)
 
+    def test_collect_and_sync_run_history_and_independent_parser_issues(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "state.sqlite"
+            store = LocalStateStore(path)
+            collect_run = store.begin_collect_run()
+            sync_run = store.begin_sync_run()
+
+            store.finish_collect_run(collect_run, "succeeded")
+            store.finish_sync_run(sync_run, "failed", "git_fetch_failed")
+            inserted = store.record_parser_issues(
+                (
+                    ParserIssueRecord(
+                        "source-one",
+                        "fatal_rollout_parse_error",
+                        7,
+                    ),
+                )
+            )
+            repeated = store.record_parser_issues(
+                (
+                    ParserIssueRecord(
+                        "source-one",
+                        "fatal_rollout_parse_error",
+                        7,
+                    ),
+                )
+            )
+
+            self.assertEqual((inserted, repeated), (1, 0))
+            self.assertEqual(store.parser_issue_count(), 1)
+            connection = sqlite3.connect(path)
+            try:
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT status FROM collect_runs WHERE run_id = ?",
+                        (collect_run,),
+                    ).fetchone()[0],
+                    "succeeded",
+                )
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT status, detail_code FROM sync_runs WHERE run_id = ?",
+                        (sync_run,),
+                    ).fetchone(),
+                    ("failed", "git_fetch_failed"),
+                )
+            finally:
+                connection.close()
+
+    def test_schema_version_one_is_upgraded_with_collect_history(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "legacy.sqlite"
+            connection = sqlite3.connect(path)
+            connection.execute("PRAGMA user_version = 1")
+            connection.close()
+
+            store = LocalStateStore(path)
+            run_id = store.begin_collect_run()
+            store.finish_collect_run(run_id, "succeeded")
+
+            connection = sqlite3.connect(path)
+            try:
+                self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], 2)
+                self.assertEqual(
+                    connection.execute("SELECT COUNT(*) FROM collect_runs").fetchone()[0],
+                    1,
+                )
+            finally:
+                connection.close()
+
     def test_invalid_cursor_issue_limit_and_event_are_rejected(self) -> None:
         with self.assertRaises(ValueError):
             cursor(offset=-1)

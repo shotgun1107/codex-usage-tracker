@@ -365,18 +365,61 @@ class LocalStateStore:
                 connection.execute("SELECT COUNT(*) FROM parser_issues").fetchone()[0]
             )
 
+    def record_parser_issues(
+        self,
+        issues: Iterable[ParserIssueRecord],
+    ) -> int:
+        """Persist privacy-safe parser diagnostics without advancing a cursor."""
+
+        issue_records = tuple(issues)
+        connection = self._connect()
+        inserted = 0
+        try:
+            connection.execute("BEGIN IMMEDIATE")
+            now = _utc_now()
+            for issue in issue_records:
+                cursor = connection.execute(
+                    """
+                    INSERT OR IGNORE INTO parser_issues (
+                        source_id, code, record_position, cli_version, first_seen_at
+                    ) VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        issue.source_id,
+                        issue.code,
+                        issue.record_position if issue.record_position is not None else -1,
+                        issue.cli_version or "",
+                        now,
+                    ),
+                )
+                inserted += max(0, cursor.rowcount)
+            connection.commit()
+            return inserted
+        except Exception:
+            connection.rollback()
+            raise
+        finally:
+            connection.close()
+
+    def begin_collect_run(self) -> int:
+        """Record a local collection attempt."""
+
+        return self._begin_run("collect_runs")
+
+    def finish_collect_run(
+        self,
+        run_id: int,
+        status: str,
+        detail_code: str | None = None,
+    ) -> None:
+        """Finish one known collection attempt."""
+
+        self._finish_run("collect_runs", run_id, status, detail_code)
+
     def begin_sync_run(self) -> int:
         """Record a local sync attempt without placing secrets in diagnostics."""
 
-        with closing(self._connect()) as connection:
-            cursor = connection.execute(
-                """
-                INSERT INTO sync_runs (started_at, status)
-                VALUES (?, 'running')
-                """,
-                (_utc_now(),),
-            )
-            return int(cursor.lastrowid)
+        return self._begin_run("sync_runs")
 
     def finish_sync_run(
         self,
@@ -386,25 +429,46 @@ class LocalStateStore:
     ) -> None:
         """Finish one known sync run as succeeded or failed."""
 
+        self._finish_run("sync_runs", run_id, status, detail_code)
+
+    def _begin_run(self, table: str) -> int:
+        if table not in {"collect_runs", "sync_runs"}:
+            raise ValueError("unsupported run table")
+        with closing(self._connect()) as connection:
+            cursor = connection.execute(
+                f"INSERT INTO {table} (started_at, status) VALUES (?, 'running')",
+                (_utc_now(),),
+            )
+            return int(cursor.lastrowid)
+
+    def _finish_run(
+        self,
+        table: str,
+        run_id: int,
+        status: str,
+        detail_code: str | None,
+    ) -> None:
+        if table not in {"collect_runs", "sync_runs"}:
+            raise ValueError("unsupported run table")
         if isinstance(run_id, bool) or not isinstance(run_id, int) or run_id < 1:
             raise ValueError("run_id must be a positive integer")
         if status not in {"succeeded", "failed"}:
-            raise ValueError("sync status must be succeeded or failed")
+            raise ValueError("run status must be succeeded or failed")
         if detail_code is not None and (
             not isinstance(detail_code, str) or not detail_code
         ):
             raise ValueError("detail_code must be a non-empty string or None")
         with closing(self._connect()) as connection:
             cursor = connection.execute(
-                """
-                UPDATE sync_runs
+                f"""
+                UPDATE {table}
                 SET finished_at = ?, status = ?, detail_code = ?
                 WHERE run_id = ? AND status = 'running'
                 """,
                 (_utc_now(), status, detail_code, run_id),
             )
             if cursor.rowcount != 1:
-                raise LocalStoreError("sync run is missing or already finished")
+                raise LocalStoreError("run is missing or already finished")
 
     def known_usage_source_event_ids(self) -> frozenset[str]:
         """Return logical usage IDs already retained in the local outbox history."""

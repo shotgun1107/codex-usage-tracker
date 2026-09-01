@@ -93,10 +93,21 @@ class CollectService:
 
     def collect(self) -> CollectResult:
         with ApplicationLock(self.config.state_db):
-            return self._collect()
+            store = LocalStateStore(self.config.state_db)
+            run_id = store.begin_collect_run()
+            try:
+                result = self._collect(store)
+            except Exception as error:
+                store.finish_collect_run(
+                    run_id,
+                    "failed",
+                    type(error).__name__,
+                )
+                raise
+            store.finish_collect_run(run_id, "succeeded")
+            return result
 
-    def _collect(self) -> CollectResult:
-        store = LocalStateStore(self.config.state_db)
+    def _collect(self, store: LocalStateStore) -> CollectResult:
         reader = LedgerReader(self.config.ledger_root)
         ledger_before = reader.read_all()
         ledger_key_ids = {
@@ -148,8 +159,18 @@ class CollectService:
                 continue
             try:
                 parsed = parse_rollout(snapshot.lines)
-            except RolloutParseError:
+            except RolloutParseError as error:
                 invalid_source_ids.add(snapshot.source_id)
+                parser_issue_count += 1
+                store.record_parser_issues(
+                    (
+                        ParserIssueRecord(
+                            snapshot.source_id,
+                            "fatal_rollout_parse_error",
+                            error.record_index,
+                        ),
+                    )
+                )
                 continue
             parsed_by_source[snapshot.source_id] = parsed
             metadata_by_thread.setdefault(parsed.metadata.thread_id, parsed.metadata)
