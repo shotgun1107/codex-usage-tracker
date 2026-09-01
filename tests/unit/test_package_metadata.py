@@ -23,6 +23,7 @@ class PackageMetadataTests(unittest.TestCase):
             project["project"]["scripts"]["codex-usage"],
             "codex_usage.cli:main",
         )
+        self.assertIn("tzdata>=2024.1", project["project"]["dependencies"])
         self.assertEqual(__version__, "0.1.0")
 
     def test_schema_is_declared_as_installed_data(self) -> None:

@@ -347,7 +347,7 @@ tests/
 8. ✅ Git sync
 9. ✅ project list·manual link·alias CLI
 10. ✅ doctor 보강·다기기 end-to-end 수용 검증
-11. 🚧 wheel·Credential Manager·비공개 GitHub smoke 완료, CI 수정 검증 중
+11. 🚧 wheel·Credential Manager·비공개 GitHub smoke 완료, Windows CI 시간대 의존성 수정 검증 중
 12. ⏸️ 핵심 프로그램 완성 후 quota 보조 수집
 
 다음 완료 조건은 수정된 Windows·Linux CI의 통과다. 한도와 초기화 시각은 핵심 프로그램의 v1 검증을 마친 뒤 추가한다.
